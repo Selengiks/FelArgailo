@@ -1,13 +1,15 @@
-# service/plugins_manager.py
-
 import os
 import importlib
 from loguru import logger
 
 
 class PluginManager:
-    @staticmethod
-    def load_modules():
+    successful_modules = []
+    problematic_modules = []
+    disabled_modules = set()
+
+    @classmethod
+    def load_modules(cls):
         modules_dir = "modules"
         disabled_modules_dir = "modules/disabled"
         module_files = [
@@ -16,9 +18,12 @@ class PluginManager:
             if file_name.endswith(".py") and not file_name.startswith("__")
         ]
 
-        successful_modules = []
-        problematic_modules = []
-        disabled_modules = set(os.listdir(disabled_modules_dir))
+        cls.successful_modules = []
+        cls.problematic_modules = []
+        cls.disabled_modules = set(
+            os.path.splitext(file_name)[0]
+            for file_name in os.listdir(disabled_modules_dir)
+        )
 
         for module_name in module_files:
             module_path = f"{modules_dir}.{module_name[:-3]}"
@@ -26,20 +31,28 @@ class PluginManager:
                 module = importlib.import_module(module_path)
                 if hasattr(module, "start_module"):
                     module.start_module()
-                    successful_modules.append(module_name[:-3])
+                    cls.successful_modules.append(module_name[:-3])
                 else:
                     raise AttributeError("Module does not have start_module attribute.")
             except Exception as e:
-                problematic_modules.append((module_name[:-3], str(e)))
+                cls.problematic_modules.append((module_name[:-3], str(e)))
                 logger.error(f"Failed to load module {module_name[:-3]}: {e}")
 
         logger.info(
             f"Plugins started: "
-            f"{len(successful_modules)} successful, "
-            f"{len(problematic_modules)} with problems, "
-            f"{len(disabled_modules)} disabled"
+            f"{len(cls.successful_modules)} successful, "
+            f"{len(cls.problematic_modules)} with problems, "
+            f"{len(cls.disabled_modules)} disabled"
         )
 
+    @classmethod
+    def get_successful_modules(cls):
+        return cls.successful_modules
 
-def load_modules():
-    PluginManager.load_modules()
+    @classmethod
+    def get_problematic_modules(cls):
+        return cls.problematic_modules
+
+    @classmethod
+    def get_disabled_modules(cls):
+        return cls.disabled_modules
