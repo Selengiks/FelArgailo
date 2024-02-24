@@ -2,6 +2,9 @@
 
 import os
 from telethon import TelegramClient
+from dotenv import load_dotenv
+
+load_dotenv()
 
 
 class Bot(TelegramClient):
