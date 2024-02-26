@@ -77,7 +77,7 @@ async def aiocron_func():
 
 
 async def start_daily_tasks():
-    @aiocron.crontab("* * * * *")
+    @aiocron.crontab("0 1 * * *")
     async def daily_tasks():
         await aiocron_func()
 
