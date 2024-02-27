@@ -64,22 +64,31 @@ async def process_rusak_bot(conv, count):
         await asyncio.sleep(1)
 
 
-async def aiocron_func():
-    mine_chat_id = 1211933154
-    rusak_bot_id = 6277866886
-    rusaks = 2
+async def process_raid_chat(conv):
 
-    async with bot.conversation(mine_chat_id) as mine_conv:
-        await process_mine_chat(mine_conv, rusaks)
-
-    async with bot.conversation(rusak_bot_id, exclusive=False) as rusak_conv:
-        await process_rusak_bot(rusak_conv, rusaks)
+    await conv.send_message("/raid")
+    await asyncio.sleep(1)
 
 
 async def start_daily_tasks():
     @aiocron.crontab("0 1 * * *")
-    async def daily_tasks():
-        await aiocron_func()
+    async def feed_and_mine():
+        mine_chat_id = 1211933154
+        rusak_bot_id = 6277866886
+        rusaks = 2
+
+        async with bot.conversation(mine_chat_id) as mine_conv:
+            await process_mine_chat(mine_conv, rusaks)
+
+        async with bot.conversation(rusak_bot_id, exclusive=False) as rusak_conv:
+            await process_rusak_bot(rusak_conv, rusaks)
+
+    @aiocron.crontab("0 * * * *")
+    async def start_raid():
+        raid_chat_id = 1462197724
+
+        async with bot.conversation(raid_chat_id) as raid_conv:
+            await process_raid_chat(raid_conv)
 
 
 def start_module():

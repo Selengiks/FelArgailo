@@ -24,6 +24,11 @@ def start_module():
         if event.is_reply:
             pass
 
+    @bot.on(events.NewMessage(from_users=bot.allowed_users, pattern="!kick"))
+    async def kick_user(event):
+        if event.is_reply:
+            pass
+
     @bot.on(events.NewMessage(from_users=bot.allowed_users, pattern="!bot"))
     async def ban_bot(event):
         if event.is_reply:
