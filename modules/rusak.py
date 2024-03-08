@@ -3,6 +3,7 @@
 import asyncio
 import aiocron
 from service.bot import bot
+from telethon import events
 from loguru import logger
 
 
@@ -62,12 +63,12 @@ async def process_rusak_bot(conv, count):
         await asyncio.sleep(1)
 
 
-async def process_raid_chat(conv):
+async def process_raid_chat(conv, chat_id):
     await conv.send_message("/raid")
-    await asyncio.sleep(1)
 
 
 async def start_daily_tasks():
+    test_chat_id = 1259755561
     mine_chat_id = 1211933154
     rusak_bot_id = 6277866886
     homosekus_chat_id = 1462197724
@@ -87,7 +88,12 @@ async def start_daily_tasks():
     @aiocron.crontab("0 8-23 * * *")
     async def start_raid():
         async with bot.conversation(homosekus_chat_id) as raid_conv:
-            await process_raid_chat(raid_conv)
+            await process_raid_chat(raid_conv, homosekus_chat_id)
+
+    @bot.on(events.NewMessage(chats=test_chat_id, pattern="!raid"))
+    async def enter_raid(event):
+        test = event
+        print(test)
 
 
 def start_module():

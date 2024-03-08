@@ -9,6 +9,7 @@ from telethon import events
 def start_module():
     logger.info("Pixiv module started")
 
-    @bot.on()
+    @bot.on(events.NewMessage(chats=bot.channel, pattern="((https|http):\/\/.*)"))
     async def format_pixiv_url(event):
-        pass
+        test = event
+        print(test)

@@ -13,17 +13,42 @@ def start_module():
 
     command = "!ssteal"
 
+    async def get_username(message):
+        username = (
+            message.sender.title
+            if type(message.sender) is Channel
+            else (
+                f"@{message.sender.username}"
+                if type(message.sender) is User
+                else message.sender.id
+            )
+        )
+        return username
+
     @bot.on(events.NewMessage(from_users=bot.allowed_users, pattern=command))
     @bot.on(events.Raw(UpdateMessageReactions))
     async def stealer(event):
         if type(event) is types.UpdateMessageReactions:
             msg = await bot.get_messages(event.peer.channel_id, ids=event.msg_id)
-            for reaction in msg.reactions.recent_reactions:
-                if (
-                    reaction.peer_id.user_id in bot.allowed_users
-                    and reaction.reaction.emoticon == "🙏"
-                ):
-                    logger.info("SUCCESS")
+            username = await get_username(msg)
+            caption = ""
+            if msg.reactions.recent_reactions:
+                for reaction in msg.reactions.recent_reactions:
+                    if (
+                        reaction.peer_id.user_id in bot.allowed_users
+                        and reaction.reaction.emoticon == "🙏"
+                    ):
+                        caption = f"Вкрадено у {username}\n\n#meme"
+                    if (
+                        reaction.peer_id.user_id in bot.allowed_users
+                        and reaction.reaction.emoticon == "😭"
+                    ):
+                        caption = f"Вкрадено у {username}\n\n#art\n#cunny"
+
+                await bot.send_message(
+                    bot.channel, file=msg, message=caption
+                )
+
         else:
             if event.is_reply:
 
@@ -36,15 +61,7 @@ def start_module():
                 args = input_str.split()
                 tags = [arg for arg in args if arg.startswith("#")]
 
-                username = (
-                    reply_msg.sender.title
-                    if type(reply_msg.sender) is Channel
-                    else (
-                        f"@{reply_msg.sender.username}"
-                        if type(reply_msg.sender) is User
-                        else reply_msg.sender.id
-                    )
-                )
+                username = await get_username(reply_msg)
 
                 caption = f"Вкрадено у {username}"
 
