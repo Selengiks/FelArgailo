@@ -31,7 +31,6 @@ def start_module():
         if type(event) is types.UpdateMessageReactions:
             msg = await bot.get_messages(event.peer.channel_id, ids=event.msg_id)
             username = await get_username(msg)
-            caption = ""
             if msg.reactions.recent_reactions:
                 for reaction in msg.reactions.recent_reactions:
                     if (
@@ -39,15 +38,13 @@ def start_module():
                         and reaction.reaction.emoticon == "🙏"
                     ):
                         caption = f"Вкрадено у {username}\n\n#meme"
+                        await bot.send_message(bot.channel, file=msg, message=caption)
                     if (
                         reaction.peer_id.user_id in bot.allowed_users
                         and reaction.reaction.emoticon == "😭"
                     ):
                         caption = f"Вкрадено у {username}\n\n#art\n#cunny"
-
-                await bot.send_message(
-                    bot.channel, file=msg, message=caption
-                )
+                        await bot.send_message(bot.channel, file=msg, message=caption)
 
         else:
             if event.is_reply:
