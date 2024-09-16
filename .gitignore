@@ -235,3 +235,4 @@ cython_debug/
 media/
 *.cmd
 *test*
+temp/

@@ -81,8 +81,6 @@ def start_module():
 
             except TypeError as e:
                 logger.error(f"Type error: {e}")
-                await bot.send_message(
-                    reply_msg.chat_id,
-                    message=f"**Кібер-Фелікс**:\n__Ти що намагаєшся вкрасти, текст?"
-                    f" Ну я хз короче, лови помилку:__\n`{e}`",
+                await event.reply(
+                    f"__Ти що намагаєшся вкрасти, текст? Ну я хз короче, лови помилку:__\n`{e}`",
                 )
