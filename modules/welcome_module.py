@@ -9,7 +9,7 @@ from loguru import logger
 def start_module():
     logger.info("Welcome module started")
 
-    @bot.on(events.NewMessage(pattern="!status"))
+    @bot.on(events.NewMessage(pattern="!sstatus"))
     async def send_welcome(event):
         successful_modules = PluginManager.get_successful_modules()
         problematic_modules = PluginManager.get_problematic_modules()
@@ -32,7 +32,7 @@ def start_module():
 
         await event.reply(message)
 
-    @bot.on(events.NewMessage(pattern="!help"))
+    @bot.on(events.NewMessage(pattern="!hhelp"))
     async def felix_help(event):
         message = (
             "**Кібер-Фелікс**:\n"
@@ -43,11 +43,17 @@ def start_module():
             '    `-r` "текст"- __краде медіа з текстом, який введеться після команди.__ '
             "__Наприклад, команда `!ssteal -r Приклад коментаря з тегом #tag`, "
             "вкраде медіа на канал із підписом `Приклад коментаря з тегом #tag`.__\n"
-            "    `-g` - __дозволяє вкрасти множину медіа (якщо користувач скинув групу медіа).__\n\n"
+            "    `-g` - __дозволяє вкрасти множину медіа (якщо користувач скинув групу медіа).__\n"
+            "    `-d` - __дозволяє скачати відео з Ютубу, якщо посилання на нього буде у повідомленні.__\n"
+            "    -__Після прапора -d, Доступні опціональні прапори вибору якості:__\n"
+            "    `-lq` - __Low quality, буде завантажувати відео з порогом якості в 480p__\n"
+            "    `-mq` - __Medium quality, буде завантажувати відео з порогом якості в 720p__\n"
+            "    `-hq` - __High quality, буде завантажувати відео з порогом якості в 1080p__\n"
+            "    `-bq` - __Best quality, буде завантажувати відео з максимально доступною якістю__\n\n"
             "**Примітка**:\n"
             "    -__Щоб вкрасти медіа з дефолтним підписом, але іншим тегом, введи `!ssteal #tag`.__\n"
             "    -__Можна ввести множину тегів, наприклад `!ssteal #tag1 tag2`.__\n"
-            "    -__Прапор можна ставити в будь-якому місці команди, але краще не експерементувати.__\n"
+            "    -__Прапори можна ставити в будь-якому місці команди, але краще не експерементувати.__\n"
         )
 
         await event.reply(message)

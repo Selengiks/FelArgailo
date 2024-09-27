@@ -3,3 +3,8 @@ loguru==0.7.2
 python-dotenv==1.0.1
 Telethon==1.33.1
 pixivpy3
+yt-dlp
+pillow
+cryptg
+hachoir
+aiohttp

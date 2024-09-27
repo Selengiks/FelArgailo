@@ -6,6 +6,8 @@ from loguru import logger
 from telethon import events
 from telethon.tl.types import Channel, User
 
+from modules.youtube import youtube_handler
+
 
 def start_module():
     logger.info("Stealer module started")
@@ -64,6 +66,10 @@ def start_module():
                     for msg in msg_list[::-1]:
                         if msg.grouped_id == reply_msg.grouped_id:
                             target_msg.append(msg)
+
+            elif "-d" in args:
+                await youtube_handler(reply_msg, external=True, external_args=args)
+                return
 
             if not is_album:
                 target_msg = reply_msg
