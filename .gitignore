@@ -236,3 +236,4 @@ media/
 *.cmd
 *test*
 temp/
+.netrc

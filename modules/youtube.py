@@ -173,7 +173,7 @@ async def youtube_handler(event, external=False, external_args=None):
 
                 # Відправка відео з оновленнями прогресу
                 if not external:
-                    target = bot.service_chat_id
+                    target = bot.channel
                 else:
                     target = event.chat.id
 
