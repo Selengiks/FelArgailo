@@ -99,6 +99,7 @@ def download_youtube_video(video_url, quality):
     video_format = "bestvideo{q}+bestaudio/best".format(q=f"[height<={quality}]" if quality else "")
 
     ydl_opts = {
+        "netrc_location": ".netrc",
         "format": video_format,
         "outtmpl": os.path.join(youtube_temp_dir, f"%(title)s_{quality}.%(ext)s"),
         "merge_output_format": "mp4",
