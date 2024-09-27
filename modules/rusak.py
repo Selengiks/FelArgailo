@@ -6,7 +6,7 @@ from loguru import logger
 
 
 async def send_command_and_check_response(conv, command, success_msgs):
-    await conv.send_read_acknowledge(command, clear_mentions=True)
+    await conv.send_message(command)
     answer = await conv.get_response()
 
     return any(success_text in answer.text for success_text in success_msgs), answer
@@ -23,12 +23,12 @@ async def process_mine_chat(conv, count):
                 ["успішно відпрацював зміну", "сьогодні відпрацював зміну"],
             )
 
-        await conv.send_read_acknowledge("/swap", clear_mentions=True)
+        await conv.send_message("/swap")
         await asyncio.sleep(1)
 
 
 async def process_rusak_bot(conv, count):
-    await conv.send_read_acknowledge("/woman", clear_mentions=True)
+    await conv.send_message("/woman")
     await asyncio.sleep(1)
 
     for _ in range(count):
@@ -57,12 +57,12 @@ async def process_rusak_bot(conv, count):
                 conv, "/feed", ["смачно поїв", "хватить з нього", "захворів"]
             )
 
-        await conv.send_read_acknowledge("/swap", clear_mentions=True)
+        await conv.send_message("/swap")
         await asyncio.sleep(1)
 
 
 async def process_raid_chat(conv, chat_id):
-    await conv.send_read_acknowledge("/raid", clear_mentions=True)
+    await conv.send_message("/raid")
 
 
 mine_chat_id = 1211933154
@@ -79,7 +79,7 @@ async def feed_work_and_mine():
         await process_rusak_bot(rusak_conv, rusaks)
 
     async with bot.conversation(homosekus_chat_id, exclusive=False) as work_conv:
-        await work_conv.send_read_acknowledge("/work", clear_mentions=True)
+        await work_conv.send_message("/work")
 
 
 async def start_raid():
