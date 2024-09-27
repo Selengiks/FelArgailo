@@ -6,7 +6,7 @@ from loguru import logger
 from telethon import events
 from telethon.tl.types import Channel, User
 
-from modules.youtube import youtube_handler
+from modules.disabled.youtube import youtube_handler
 
 
 def start_module():
