@@ -71,9 +71,13 @@ async def callback(current, total, message):
     current_time = time.time()
     if current_time - callback.last_update_time > callback.update_interval:
         if total_mb >= 1:
-            callback_msg = f"{percentage}% Uploaded: {current_mb:.2f} MB out of {total_mb:.2f} MB"
+            callback_msg = (
+                f"{percentage}% Uploaded: {current_mb:.2f} MB out of {total_mb:.2f} MB"
+            )
         else:
-            callback_msg = f"{percentage}% Uploaded: {current_kb:.2f} KB out of {total_kb:.2f} KB"
+            callback_msg = (
+                f"{percentage}% Uploaded: {current_kb:.2f} KB out of {total_kb:.2f} KB"
+            )
 
         logger.trace(callback_msg)
         await bot.edit_message(message, callback_msg)
@@ -96,9 +100,12 @@ def download_youtube_video(video_url, quality):
     if not os.path.exists(youtube_temp_dir):
         os.makedirs(youtube_temp_dir)
 
-    video_format = "bestvideo{q}+bestaudio/best".format(q=f"[height<={quality}]" if quality else "")
+    video_format = "bestvideo{q}+bestaudio/best".format(
+        q=f"[height<={quality}]" if quality else ""
+    )
 
     ydl_opts = {
+        "cookiesfrombrowser": ("firefox",),
         "format": video_format,
         "outtmpl": os.path.join(youtube_temp_dir, f"%(title)s_{quality}.%(ext)s"),
         "merge_output_format": "mp4",
