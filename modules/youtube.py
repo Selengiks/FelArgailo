@@ -4,7 +4,7 @@ import time
 import os
 import re
 from yt_dlp import YoutubeDL
-from telethon import events
+from telethon import events, types
 from service.bot import bot
 from loguru import logger
 
@@ -136,19 +136,25 @@ def parse_tags(message_text):
     return tags
 
 
-async def youtube_handler(event, post=False, external_args=None):
+async def youtube_handler(event, post=False, external_args=None, external=False):
     """Обробляє нові повідомлення, що містять URL-адреси YouTube, і завантажує відео.
 
     Args:
+        :param external: параметр, що вказує, чи викликаний метод з іншого модуля
         :param post: якщо True, відправляє файл в чат де викликано команду, інакше - постить на канал
         :param external_args: Список прапорів, що були передані із зовнішньої команди
         :param event: (NewMessage): Подія нового повідомлення.
     """
 
-    if not post:
-        message_text = str(event.message.message)
+    if not external:
+        event_msg = event.message.message
     else:
-        message_text = str(event.message) + " ".join(external_args)
+        event_msg = event.message
+
+    if not post:
+        message_text = str(event_msg)
+    else:
+        message_text = str(event_msg) + " ".join(external_args)
 
     youtube_pattern = r"(https?://(?:www\.)?(?:youtube\.com/watch\?v=|youtu\.be/|youtube\.com/shorts/)([\w-]+))"
     youtube_match = re.search(youtube_pattern, message_text)
