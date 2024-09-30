@@ -71,13 +71,9 @@ async def callback(current, total, message):
     current_time = time.time()
     if current_time - callback.last_update_time > callback.update_interval:
         if total_mb >= 1:
-            callback_msg = (
-                f"{percentage}% Uploaded: {current_mb:.2f} MB out of {total_mb:.2f} MB"
-            )
+            callback_msg = f"{percentage:.2f}% Uploaded: {current_mb:.2f} MB out of {total_mb:.2f} MB"
         else:
-            callback_msg = (
-                f"{percentage}% Uploaded: {current_kb:.2f} KB out of {total_kb:.2f} KB"
-            )
+            callback_msg = f"{percentage:.2f}% Uploaded: {current_kb:.2f} KB out of {total_kb:.2f} KB"
 
         logger.trace(callback_msg)
         await bot.edit_message(message, callback_msg)
@@ -140,15 +136,16 @@ def parse_tags(message_text):
     return tags
 
 
-async def youtube_handler(event, external=False, external_args=None):
+async def youtube_handler(event, post=False, external_args=None):
     """Обробляє нові повідомлення, що містять URL-адреси YouTube, і завантажує відео.
 
     Args:
+        :param post: якщо True, відправляє файл в чат де викликано команду, інакше - постить на канал
         :param external_args: Список прапорів, що були передані із зовнішньої команди
         :param event: (NewMessage): Подія нового повідомлення.
-        :param external: Прапор, чи викликаний був метод ззовні (з іншого модуля або що)
     """
-    if not external:
+
+    if not post:
         message_text = str(event.message.message)
     else:
         message_text = str(event.message) + " ".join(external_args)
@@ -179,20 +176,25 @@ async def youtube_handler(event, external=False, external_args=None):
                 total_size = os.path.getsize(video_path)
 
                 # Відправка відео з оновленнями прогресу
-                if not external:
-                    target = bot.channel
+                if not post:
+                    await bot.send_file(
+                        event.chat.id,
+                        file=video_path,
+                        progress_callback=lambda current, total: callback(
+                            current, total, message
+                        ),
+                        supports_streaming=True,
+                    )
                 else:
-                    target = event.chat.id
-
-                await bot.send_file(
-                    target,
-                    caption=caption,
-                    file=video_path,
-                    progress_callback=lambda current, total: callback(
-                        current, total, message
-                    ),
-                    supports_streaming=True,
-                )
+                    await bot.send_file(
+                        bot.channel,
+                        caption=caption,
+                        file=video_path,
+                        progress_callback=lambda current, total: callback(
+                            current, total, message
+                        ),
+                        supports_streaming=True,
+                    )
 
                 await bot.edit_message(
                     message,

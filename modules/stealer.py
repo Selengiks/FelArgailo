@@ -68,7 +68,10 @@ def start_module():
                             target_msg.append(msg)
 
             elif "-d" in args:
-                await youtube_handler(reply_msg, external=True, external_args=args)
+                if "-p" in args:
+                    await youtube_handler(reply_msg, post=True, external_args=args)
+                else:
+                    await youtube_handler(reply_msg, post=False, external_args=args)
                 return
 
             if not is_album:
