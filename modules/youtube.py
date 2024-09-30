@@ -57,7 +57,7 @@ async def callback(current, total, message):
     if not hasattr(callback, "last_update_time"):
         callback.last_update_time = 0
     if not hasattr(callback, "update_interval"):
-        callback.update_interval = 3  # Оновлювати кожні 3 секунди
+        callback.update_interval = 5
 
     current_kb = current / 1024
     total_kb = total / 1024
