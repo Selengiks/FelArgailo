@@ -14,7 +14,7 @@ class Bot(TelegramClient):
         self.service_chat_id = int(os.getenv("SERVICE_CHAT_ID"))
         self.test_channel = os.getenv("TEST_CHANNEL")
         self.test_chat_id = int(os.getenv("TEST_CHAT_ID"))
-        self.allowed_users = [290522978, 472092975, 570477907]
+        self.allowed_users = [290522978, 472092975, 570477907, 582601743]
         self.temp_dir = ".\\temp"
         self.pixiv_access_token = os.getenv("PIXIV_ACCESS_TOKEN")
         self.pixiv_refresh_token = os.getenv("PIXIV_REFRESH_TOKEN")
