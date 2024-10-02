@@ -1,53 +1,44 @@
+# modules/rusak.py
+
 import asyncio
 from service.bot import bot
 from loguru import logger
 
 
-async def send_command_and_check_response(chat_id, command, success_msgs):
-    # Відправляємо команду
-    await bot.send_message(chat_id, command)
+async def send_command_and_check_response(conv, command, success_msgs):
+    await conv.send_message(command)
+    answer = await conv.get_response()
 
-    # Отримуємо відповідь
-    messages = await bot.get_messages(chat_id, limit=1)
-    answer = messages[0]
-
-    # Позначаємо повідомлення як прочитане
-    await bot.send_read_acknowledge(chat_id, message=answer, clear_mentions=True)
-
-    # Перевіряємо, чи містить повідомлення успішний текст
     return any(success_text in answer.text for success_text in success_msgs), answer
 
 
-async def process_mine_chat(chat_id, count):
+async def process_mine_chat(conv, count):
     for _ in range(count):
         success = False
 
         while not success:
             success, answer = await send_command_and_check_response(
-                chat_id,
+                conv,
                 "/mine",
                 ["успішно відпрацював зміну", "сьогодні відпрацював зміну"],
             )
 
-        await send_command_and_check_response(
-            chat_id, "/swap", []
-        )  # swap також через метод
+        await conv.send_message("/swap")
         await asyncio.sleep(1)
 
 
-async def process_rusak_bot(chat_id, count):
-    await send_command_and_check_response(chat_id, "/woman", [])
+async def process_rusak_bot(conv, count):
+    await conv.send_message("/woman")
     await asyncio.sleep(1)
 
     for _ in range(count):
         artefact, answer = await send_command_and_check_response(
-            chat_id, "/i", ["Артефакт Серце Оази"]
+            conv, "/i", ["Артефакт Серце Оази"]
         )
 
         while artefact:
             await answer.buttons[0][1].click()
-            inventory = await bot.get_messages(chat_id, ids=answer.id)
-
+            inventory = await bot.get_messages(conv.chat_id, ids=answer.id)
             nested = True
             for button in inventory.buttons:
                 while nested:
@@ -58,22 +49,20 @@ async def process_rusak_bot(chat_id, count):
                             nested = False
                             break
                     else:
-                        await send_command_and_check_response(
-                            chat_id, "Закінчився цукор, русак голодний", []
-                        )
+                        await conv.send_message("Закінчився цукор, русак голодний")
 
         success = False
         while not success:
             success, answer = await send_command_and_check_response(
-                chat_id, "/feed", ["смачно поїв", "хватить з нього", "захворів"]
+                conv, "/feed", ["смачно поїв", "хватить з нього", "захворів"]
             )
 
-        await send_command_and_check_response(chat_id, "/swap", [])
+        await conv.send_message("/swap")
         await asyncio.sleep(1)
 
 
-async def process_raid_chat(chat_id):
-    await send_command_and_check_response(chat_id, "/raid", [])
+async def process_raid_chat(conv, chat_id):
+    await conv.send_message("/raid")
 
 
 mine_chat_id = 1211933154
@@ -83,13 +72,19 @@ rusaks = 2
 
 
 async def feed_work_and_mine():
-    await process_mine_chat(mine_chat_id, rusaks)
-    await process_rusak_bot(rusak_bot_id, rusaks)
-    await send_command_and_check_response(homosekus_chat_id, "/work", [])
+    async with bot.conversation(mine_chat_id) as mine_conv:
+        await process_mine_chat(mine_conv, rusaks)
+
+    async with bot.conversation(rusak_bot_id, exclusive=False) as rusak_conv:
+        await process_rusak_bot(rusak_conv, rusaks)
+
+    async with bot.conversation(homosekus_chat_id, exclusive=False) as work_conv:
+        await work_conv.send_message("/work")
 
 
 async def start_raid():
-    await process_raid_chat(homosekus_chat_id)
+    async with bot.conversation(homosekus_chat_id) as raid_conv:
+        await process_raid_chat(raid_conv, homosekus_chat_id)
 
 
 def start_module():
