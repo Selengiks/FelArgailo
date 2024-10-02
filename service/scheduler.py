@@ -9,7 +9,7 @@ from service.temp_files_remover import cleanup_temp_files
 
 async def aiocron_scheduler():
 
-    @aiocron.crontab("0 0 * * *")  # Щодня о 00:00
+    @aiocron.crontab("0 */6 * * *")  # Кожні 6 годин
     async def process_cleanup():
         await cleanup_temp_files()
 

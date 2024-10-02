@@ -116,8 +116,7 @@ def download_youtube_video(video_url, quality):
         return video_path
 
     except Exception as e:
-        error_message = f"Error downloading video from YouTube: {e}"
-        logger.error(error_message)
+        logger.error(f"Error downloading video from YouTube: {e}")
         return None
 
 
@@ -170,13 +169,14 @@ async def youtube_handler(event, post=False, external_args=None, external=False)
             video_path = download_youtube_video(youtube_url, video_quality)
 
             if not video_path:
+                logger.warning("Nothing found")
                 await event.reply("Щось я нічого не знайшов, тож іди гуляй")
                 return
 
             await bot.edit_message(message, "Знайшов відео, ща вкрадемо 👀")
 
             tags = parse_tags(message_text)
-            caption = f"[Соурс]({youtube_url})\n\n" + "\n".join(tags)
+            caption = f"Соурс({youtube_url})\n\n" + "\n".join(tags)
 
             try:
                 total_size = os.path.getsize(video_path)
@@ -206,6 +206,7 @@ async def youtube_handler(event, post=False, external_args=None, external=False)
                     message,
                     f"Во👍. Відео успішно вкрадено на канал\n\nЗавантажено відео розміром {format_size(total_size)}",
                 )
+                # await bot.delete_messages(event.chat, message_ids=event.reply.id)
 
             except Exception as e:
                 logger.error(f"Error posting to channel: {e}")
@@ -214,15 +215,14 @@ async def youtube_handler(event, post=False, external_args=None, external=False)
                 )
 
         except Exception as e:
-            error_message = f"Сталася помилка при скачуванні відео: {e}"
+            error_message = f"Сталася помилка при завантажуванні відео: {e}"
             logger.error(error_message)
             await bot.edit_message(
                 message, error_message
-            )  # Надсилаємо повідомлення про помилку
+            )
 
 
 def start_module():
-    """Запускає модуль YouTube, який слухає нові повідомлення."""
     logger.info("YouTube module started")
 
     @bot.on(events.NewMessage(from_users=bot.allowed_users, chats=bot.service_chat_id))
