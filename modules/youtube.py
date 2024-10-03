@@ -54,6 +54,7 @@ def download_youtube_media(video_url, quality):
         media_format = "bestaudio/best"
         output_format = "mp3"
         ydl_opts = {
+            "cookiesfrombrowser": ("firefox",),
             "format": media_format,
             "outtmpl": os.path.join(youtube_temp_dir, f"%(title)s_{quality}.%(ext)s"),
             "postprocessors": [
