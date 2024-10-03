@@ -83,7 +83,10 @@ def start_module():
                     caption += "\n\n#meme"
 
             try:
-                await bot.send_message(bot.channel, file=target_msg, message=caption)
+                await bot.send_message(
+                    bot.test_channel, file=target_msg, message=caption
+                )
+                await bot.delete_messages(event.chat, message_ids=event.message.id)
 
             except TypeError as e:
                 logger.error(f"Type error: {e}")
