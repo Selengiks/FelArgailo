@@ -73,7 +73,7 @@ def download_youtube_media(video_url, quality):
         )
         output_format = "mp4"
         ydl_opts = {
-            "cookiesfrombrowser": ("firefox",),
+            # "cookiesfrombrowser": ("firefox",),
             "format": media_format,
             "outtmpl": os.path.join(youtube_temp_dir, f"%(title)s_{quality}.%(ext)s"),
             "merge_output_format": output_format,
@@ -153,7 +153,7 @@ async def youtube_handler(event, external=False):
                 )
             else:
                 await bot.send_file(
-                    event.chat.id,
+                    event.chat_id,
                     caption=caption
                     + f"\n\nЗавантажено медіа розміром {format_size(total_size)}",
                     file=video_path,
@@ -163,7 +163,11 @@ async def youtube_handler(event, external=False):
 
                 await bot.delete_messages(
                     msg.chat,
-                    message_ids=[message.id, msg.id] if not external else [message.id, event.message.id],
+                    message_ids=(
+                        [message.id, msg.id]
+                        if not external
+                        else [message.id, event.message.id]
+                    ),
                 )
 
         except Exception as e:
