@@ -1,227 +1,178 @@
-# modules/youtube.py
-
 import time
 import os
 import re
 from yt_dlp import YoutubeDL
-from telethon import events, types
+from telethon import events
 from service.bot import bot
 from loguru import logger
 
 
-# Форматування розміру
+# Форматування розміру файлу
 def format_size(size):
-    """Конвертує розмір файлу в зручний формат з одиницями (Б, КБ, МБ, ГБ).
-
-    Args:
-        size (int): Розмір файлу в байтах.
-
-    Returns:
-        str: Розмір файлу у форматі з одиницями.
-    """
-    for unit in ["Б", "КБ", "МБ", "ГБ"]:
+    for unit in ["Б", "КБ", "МБ"]:
         if size < 1024:
             return f"{size:.2f} {unit}"
         size /= 1024
 
 
-# Отримання якості відео
-def get_video_quality(message_text):
-    """Визначає якість відео на основі параметрів у тексті повідомлення.
-
-    Args:
-        message_text (str): Текст повідомлення, що містить параметри якості.
-
-    Returns:
-        str: Формат для завантаження відео.
-    """
-    if "-lq" in message_text:
-        return 480
-    elif "-mq" in message_text:
-        return 720
-    elif "-hq" in message_text:
-        return 1080
-    elif "-bq" in message_text:
-        return None
+# Отримання якості відео з повідомлення
+def get_media_quality(message_text):
+    quality_map = {"-lq": 480, "-mq": 720, "-hq": 1080, "-bq": "BQ", "-ea": "audio"}
+    for key, value in quality_map.items():
+        if key in message_text:
+            return value
+    return 1080  # За замовчуванням
 
 
+# Оновлення прогресу завантаження
 async def callback(current, total, message):
-    """Оновлює повідомлення з прогресом завантаження відео.
-
-    Args:
-        current (int): Кількість завантажених байтів.
-        total (int): Загальна кількість байтів для завантаження.
-        message (Message): Повідомлення для оновлення.
-    """
-    # Використовуйте замикання, щоб зберегти стан між викликами
     if not hasattr(callback, "last_update_time"):
         callback.last_update_time = 0
     if not hasattr(callback, "update_interval"):
         callback.update_interval = 5
 
-    current_kb = current / 1024
-    total_kb = total / 1024
-    current_mb = current_kb / 1024
-    total_mb = total_kb / 1024
-
-    # Обчислюємо відсоток завершення
     percentage = (current / total) * 100
-
-    # Перевіряємо, чи потрібно оновити повідомлення
     current_time = time.time()
-    if current_time - callback.last_update_time > callback.update_interval:
-        if total_mb >= 1:
-            callback_msg = f"{percentage:.2f}% Uploaded: {current_mb:.2f} MB out of {total_mb:.2f} MB"
-        else:
-            callback_msg = f"{percentage:.2f}% Uploaded: {current_kb:.2f} KB out of {total_kb:.2f} KB"
 
+    # Оновлюємо повідомлення кожні 5 секунд
+    if current_time - callback.last_update_time > callback.update_interval:
+        current_mb, total_mb = current / (1024**2), total / (1024**2)
+        callback_msg = (
+            f"{percentage:.2f}% Uploaded: {current_mb:.2f} MB out of {total_mb:.2f} MB"
+        )
         logger.trace(callback_msg)
         await bot.edit_message(message, callback_msg)
-
-        # Оновлюємо значення часу
         callback.last_update_time = current_time
 
 
-def download_youtube_video(video_url, quality):
-    """Завантажує відео з YouTube за вказаним URL та якістю.
-
-    Args:
-        video_url (str): URL відео на YouTube.
-        quality (str): Формат для завантаження відео.
-
-    Returns:
-        str: Шлях до завантаженого відео або None у разі помилки.
-    """
+# Завантаження відео з YouTube
+def download_youtube_media(video_url, quality):
     youtube_temp_dir = os.path.join(bot.temp_dir, "youtube")
-    if not os.path.exists(youtube_temp_dir):
-        os.makedirs(youtube_temp_dir)
+    os.makedirs(youtube_temp_dir, exist_ok=True)
 
-    video_format = "bestvideo{q}+bestaudio/best".format(
-        q=f"[height<={quality}]" if quality else ""
-    )
-
-    ydl_opts = {
-        "cookiesfrombrowser": ("firefox",),
-        "format": video_format,
-        "outtmpl": os.path.join(youtube_temp_dir, f"%(title)s_{quality}.%(ext)s"),
-        "merge_output_format": "mp4",
-        "quiet": True,
-    }
+    if quality == "audio":  # Якщо аудіо, використовуємо bestaudio
+        media_format = "bestaudio/best"
+        output_format = "mp3"
+        ydl_opts = {
+            "format": media_format,
+            "outtmpl": os.path.join(youtube_temp_dir, f"%(title)s_{quality}.%(ext)s"),
+            "postprocessors": [
+                {  # Додаємо конвертацію в mp3
+                    "key": "FFmpegExtractAudio",
+                    "preferredcodec": "mp3",
+                    "preferredquality": "192",
+                }
+            ],
+            "quiet": True,
+        }
+    else:  # Інакше завантажуємо відео
+        media_format = (
+            f"bestvideo[height<={quality}]+bestaudio/best"
+            if isinstance(quality, int)
+            else "best"
+        )
+        output_format = "mp4"
+        ydl_opts = {
+            "format": media_format,
+            "outtmpl": os.path.join(youtube_temp_dir, f"%(title)s_{quality}.%(ext)s"),
+            "merge_output_format": output_format,
+            "quiet": True,
+        }
 
     try:
         with YoutubeDL(ydl_opts) as ydl:
             info_dict = ydl.extract_info(video_url, download=True)
-            video_filename = ydl.prepare_filename(info_dict)
-            video_path = os.path.splitext(video_filename)[0] + ".mp4"
-        return video_path
-
+            media_path = (
+                os.path.splitext(ydl.prepare_filename(info_dict))[0]
+                + f".{output_format}"
+            )
+        return media_path
     except Exception as e:
-        logger.error(f"Error downloading video from YouTube: {e}")
+        logger.error(f"Error downloading media from YouTube: {e}")
         return None
 
 
-def parse_tags(message_text):
-    """Парсить теги з тексту повідомлення.
+# Парсинг тегів з повідомлення
+def parse_tags(message_text, is_audio=False):
+    if is_audio:
+        return ["#music"]
 
-    Args:
-        message_text (str): Текст повідомлення.
-
-    Returns:
-        list: Список тегів.
-    """
     tags = re.findall(r"#\w+", message_text)
-    if not tags:
-        tags = ["#meme"]
-    return tags
+    return tags if tags else ["#meme"]
 
 
-async def youtube_handler(event, post=False, external_args=None, external=False):
-    """Обробляє нові повідомлення, що містять URL-адреси YouTube, і завантажує відео.
+# Основний обробник YouTube-повідомлень
+async def youtube_handler(event, external=False):
+    msg = (
+        event.message
+        if not external
+        else await bot.get_messages(event.chat_id, ids=event.message.reply_to_msg_id)
+    )
 
-    Args:
-        :param external: параметр, що вказує, чи викликаний метод з іншого модуля
-        :param post: якщо True, відправляє файл в чат де викликано команду, інакше - постить на канал
-        :param external_args: Список прапорів, що були передані із зовнішньої команди
-        :param event: (NewMessage): Подія нового повідомлення.
-    """
+    post = True if "-p" in msg.message.join(event.message.message.split(" ")) else False
 
-    if not external:
-        event_msg = event.message.message
-    else:
-        event_msg = event.message
-
-    if not post:
-        message_text = str(event_msg)
-    else:
-        message_text = str(event_msg) + " ".join(external_args)
-
-    youtube_pattern = r"(https?://(?:www\.)?(?:youtube\.com/watch\?v=|youtu\.be/|youtube\.com/shorts/)([\w-]+))"
-    youtube_match = re.search(youtube_pattern, message_text)
-
-    if youtube_match:
-        message = await event.reply("🗿 Опа, ютубимо, ща вкрадемо відео...")
-        youtube_url = youtube_match.group(1)
-
-        # Отримуємо якість відео з параметрів
-        video_quality = get_video_quality(message_text)
+    youtube_url_match = re.search(
+        r"(https?://(?:www\.)?(?:youtube\.com/watch\?v=|youtu\.be/|youtube\.com/shorts/)[\w-]+)",
+        str(msg.message),
+    )
+    if youtube_url_match:
+        youtube_url = youtube_url_match.group(1)
+        message = await event.reply("🗿 Опа, ютубчик, ща вкрадемо...")
 
         try:
-            video_path = download_youtube_video(youtube_url, video_quality)
+            quality = get_media_quality(event.message.message)
+            video_path = download_youtube_media(youtube_url, quality)
 
             if not video_path:
-                logger.warning("Nothing found")
+                logger.warning("No media found")
                 await event.reply("Щось я нічого не знайшов, тож іди гуляй")
                 return
 
-            await bot.edit_message(message, "Знайшов відео, ща вкрадемо 👀")
+            await bot.edit_message(message, "Скачав медіа, ща завантажимо 👀")
+            tags = parse_tags(
+                msg.message + " " + event.message.message,
+                is_audio=True if quality == "audio" else False,
+            )
 
-            tags = parse_tags(message_text)
-            caption = f"Соурс({youtube_url})\n\n" + "\n".join(tags)
+            total_size = os.path.getsize(video_path)
+            caption = f"[Соурс]({youtube_url})"
 
-            try:
-                total_size = os.path.getsize(video_path)
-
-                # Відправка відео з оновленнями прогресу
-                if not post:
-                    await bot.send_file(
-                        event.chat.id,
-                        file=video_path,
-                        progress_callback=lambda current, total: callback(
-                            current, total, message
-                        ),
-                        supports_streaming=True,
-                    )
-                else:
-                    await bot.send_file(
-                        bot.channel,
-                        caption=caption,
-                        file=video_path,
-                        progress_callback=lambda current, total: callback(
-                            current, total, message
-                        ),
-                        supports_streaming=True,
-                    )
-
+            if post:
+                caption += "\n\n" + "\n".join(tags)
+                await bot.send_file(
+                    bot.test_channel,
+                    caption=caption,
+                    file=video_path,
+                    progress_callback=lambda c, t: callback(c, t, message),
+                    supports_streaming=not quality == "audio",
+                )
                 await bot.edit_message(
                     message,
-                    f"Во👍. Відео успішно вкрадено на канал\n\nЗавантажено відео розміром {format_size(total_size)}",
+                    f"Во👍. Медіа успішно вкрадено на канал\n\nЗавантажено файл розміром {format_size(total_size)}",
                 )
-                # await bot.delete_messages(event.chat, message_ids=event.reply.id)
+            else:
+                await bot.send_file(
+                    event.chat.id,
+                    caption=caption
+                    + f"\n\nЗавантажено медіа розміром {format_size(total_size)}",
+                    file=video_path,
+                    progress_callback=lambda c, t: callback(c, t, message),
+                    supports_streaming=not quality == "audio",
+                )
 
-            except Exception as e:
-                logger.error(f"Error posting to channel: {e}")
-                await event.reply(
-                    f"Щось у мене нема настрою постити відео з YouTube... Можливо це через наступну хуйню: {e}"
+                await bot.delete_messages(
+                    msg.chat,
+                    message_ids=[message.id, msg.id] if not external else [message.id, event.message.id],
                 )
 
         except Exception as e:
-            error_message = f"Сталася помилка при завантажуванні відео: {e}"
-            logger.error(error_message)
+            logger.error(f"Error processing YouTube media: {e}")
             await bot.edit_message(
-                message, error_message
+                message, f"Сталася помилка при завантажуванні медіа: {e}"
             )
 
 
+# Запуск модуля
 def start_module():
     logger.info("YouTube module started")
 
