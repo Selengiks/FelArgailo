@@ -84,7 +84,7 @@ def start_module():
 
             try:
                 await bot.send_message(
-                    bot.test_channel, file=target_msg, message=caption
+                    bot.channel, file=target_msg, message=caption
                 )
                 await bot.delete_messages(event.chat, message_ids=event.message.id)
 

@@ -73,7 +73,7 @@ def download_youtube_media(video_url, quality):
         )
         output_format = "mp4"
         ydl_opts = {
-            # "cookiesfrombrowser": ("firefox",),
+            "cookiesfrombrowser": ("firefox",),
             "format": media_format,
             "outtmpl": os.path.join(youtube_temp_dir, f"%(title)s_{quality}.%(ext)s"),
             "merge_output_format": output_format,
