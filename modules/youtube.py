@@ -73,6 +73,7 @@ def download_youtube_media(video_url, quality):
         )
         output_format = "mp4"
         ydl_opts = {
+            "cookiesfrombrowser": ("firefox",),
             "format": media_format,
             "outtmpl": os.path.join(youtube_temp_dir, f"%(title)s_{quality}.%(ext)s"),
             "merge_output_format": output_format,
@@ -140,7 +141,7 @@ async def youtube_handler(event, external=False):
             if post:
                 caption += "\n\n" + "\n".join(tags)
                 await bot.send_file(
-                    bot.test_channel,
+                    bot.channel,
                     caption=caption,
                     file=video_path,
                     progress_callback=lambda c, t: callback(c, t, message),
