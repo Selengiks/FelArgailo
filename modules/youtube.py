@@ -21,7 +21,7 @@ def get_media_quality(message_text):
     for key, value in quality_map.items():
         if key in message_text:
             return value
-    return 1080  # За замовчуванням
+    return 720  # За замовчуванням
 
 
 # Оновлення прогресу завантаження
@@ -54,7 +54,7 @@ def download_youtube_media(video_url, quality):
         media_format = "bestaudio/best"
         output_format = "mp3"
         ydl_opts = {
-            "cookiesfrombrowser": ("firefox",),
+            # "cookiesfrombrowser": ("firefox",),
             "format": media_format,
             "outtmpl": os.path.join(youtube_temp_dir, f"%(title)s_{quality}.%(ext)s"),
             "postprocessors": [
@@ -74,7 +74,7 @@ def download_youtube_media(video_url, quality):
         )
         output_format = "mp4"
         ydl_opts = {
-            "cookiesfrombrowser": ("firefox",),
+            # "cookiesfrombrowser": ("firefox",),
             "format": media_format,
             "outtmpl": os.path.join(youtube_temp_dir, f"%(title)s_{quality}.%(ext)s"),
             "merge_output_format": output_format,
@@ -104,14 +104,19 @@ def parse_tags(message_text, is_audio=False):
 
 
 # Основний обробник YouTube-повідомлень
-async def youtube_handler(event, external=False):
+async def youtube_handler(event, external=False, sender_type=None):
     msg = (
         event.message
         if not external
         else await bot.get_messages(event.chat_id, ids=event.message.reply_to_msg_id)
     )
 
-    post = True if "-p" in msg.message.join(event.message.message.split(" ")) else False
+    post = (
+        True
+        if "-p" in msg.message.join(event.message.message.split(" "))
+        and sender_type == "superadmin"
+        else False
+    )
 
     youtube_url_match = re.search(
         r"(https?://(?:www\.)?(?:youtube\.com/watch\?v=|youtu\.be/|youtube\.com/shorts/)[\w-]+)",
@@ -156,7 +161,7 @@ async def youtube_handler(event, external=False):
                 await bot.send_file(
                     event.chat_id,
                     caption=caption
-                    + f"\n\nЗавантажено медіа розміром {format_size(total_size)}",
+                    + f"\n\nВо👍. Завантажено медіа розміром {format_size(total_size)}",
                     file=video_path,
                     progress_callback=lambda c, t: callback(c, t, message),
                     supports_streaming=not quality == "audio",
@@ -167,7 +172,11 @@ async def youtube_handler(event, external=False):
                     message_ids=(
                         [message.id, msg.id]
                         if not external
-                        else [message.id, event.message.id]
+                        else (
+                            [message.id, event.message.id]
+                            if msg.sender_id != event.sender_id
+                            else [message.id, event.message.id, msg.id]
+                        )
                     ),
                 )
 
