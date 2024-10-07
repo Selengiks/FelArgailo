@@ -193,4 +193,4 @@ def start_module():
 
     @bot.on(events.NewMessage(from_users=bot.allowed_users, chats=bot.service_chat_id))
     async def handle_youtube_handler(event):
-        await youtube_handler(event)
+        await youtube_handler(event, sender_type="superadmin")
