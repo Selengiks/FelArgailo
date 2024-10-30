@@ -5,7 +5,13 @@ from telethon import events
 from telethon.tl.types import Channel, User
 from telethon.tl.types import ChannelParticipantsAdmins
 
-from modules.youtube import youtube_handler
+try:
+    from modules.youtube import youtube_handler
+
+    youtube_module = True
+except ImportError:
+    youtube_module = False
+    logger.warning("Youtube module is not installed")
 
 
 def start_module():
@@ -70,9 +76,12 @@ def start_module():
             # Для суперадмінів — весь функціонал
             if sender_role == "superadmin":
                 # Суперадмін може все, що й адмін
-                if "-d" in args:
-                    await youtube_handler(event, external=True, sender_type=sender_role)
-                    return
+                if youtube_module:
+                    if "-d" in args:
+                        await youtube_handler(
+                            event, external=True, sender_type=sender_role
+                        )
+                        return
                 if "-q" in args and reply_msg.text:
                     caption = f'Цитовано {username}:\n"{reply_msg.text}"'
                 elif "-r" in args:
@@ -88,7 +97,7 @@ def start_module():
                     )
                     target_msg = [
                         msg
-                        for msg in msg_list
+                        for msg in msg_list[::-1]
                         if msg.grouped_id == reply_msg.grouped_id
                     ]
                 if not is_album:
@@ -100,12 +109,15 @@ def start_module():
 
             # Для адмінів — також дозволити команду з -d
             elif sender_role == "admin":
-                if "-d" in args:
-                    await youtube_handler(event, external=True, sender_type=sender_role)
-                    return
-                else:
-                    await event.reply("⛔️ Доступна лише команда з прапором -d")
-                    return
+                if youtube_module:
+                    if "-d" in args:
+                        await youtube_handler(
+                            event, external=True, sender_type=sender_role
+                        )
+                        return
+                    else:
+                        await event.reply("⛔️ Доступна лише команда з прапором -d")
+                        return
 
             # Відправка повідомлення в канал
             try:
