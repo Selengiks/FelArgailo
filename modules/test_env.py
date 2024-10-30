@@ -2,7 +2,6 @@
 
 import asyncio
 import aiocron
-import spotdl
 from service.bot import bot
 from telethon import events
 from loguru import logger
