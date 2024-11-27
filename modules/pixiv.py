@@ -57,7 +57,12 @@ def download_images(img_urls):
 
 
 def parse_tags(message_text):
-    tags = re.findall(r"#\w+", message_text)
+    excluded_tags = ["#pixiv"]
+
+    tags = [
+        tag for tag in re.findall(r"#\w+", message_text) if tag not in excluded_tags
+    ]
+
     if not tags:
         tags = ["#art"]
     return tags
@@ -86,9 +91,7 @@ def start_module():
                     await event.reply("Щось я нічого не знайшов, тож іди гуляй.")
                     return
 
-                await bot.edit_message(
-                    message, "Знайшов пост, ща вкрадем 👀"
-                )
+                await bot.edit_message(message, "Знайшов пост, ща вкрадем 👀")
 
                 media_files = download_images(img_urls)
 
