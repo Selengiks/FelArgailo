@@ -1,0 +1,11 @@
+version: '3.8'
+
+services:
+  fel_argailo:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: always
+    volumes:
+        - .:/fel_argailo
+    container_name: fel_argailo_container

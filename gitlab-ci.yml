@@ -1,0 +1,15 @@
+stages:
+  - deploy
+
+deploy_main:
+  stage: deploy
+  script:
+    - echo $USER
+    - cd /home/van/projects/FelArgailo
+    - eval $(ssh-agent -s)
+    - ssh-add <(echo "$SSH_PRIVATE_KEY")
+    - sh deploy.sh "$CI_COMMIT_SHA"
+
+  when: always
+  only:
+    - master
