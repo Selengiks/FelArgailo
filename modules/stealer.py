@@ -1,3 +1,5 @@
+import time
+
 from service.bot import bot
 from loguru import logger
 
@@ -125,6 +127,7 @@ def start_module():
                     await bot.send_message(
                         bot.channel, file=target_msg, message=caption
                     )
+                time.sleep(5)
                 await bot.delete_messages(event.chat_id, message_ids=event.message.id)
             except TypeError as e:
                 logger.error(f"Type error: {e}")
