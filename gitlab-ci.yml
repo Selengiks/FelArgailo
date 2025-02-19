@@ -1,15 +1,20 @@
 stages:
   - deploy
 
-deploy_main:
+deploy:
   stage: deploy
   script:
-    - echo $USER
-    - cd /home/van/projects/FelArgailo
-    - eval $(ssh-agent -s)
-    - ssh-add <(echo "$SSH_PRIVATE_KEY")
-    - sh deploy.sh "$CI_COMMIT_SHA"
+    - echo "Adding safe directory..."
+    - git config --global --add safe.directory C:/Projects/FelArgailo
+    - echo "Pulling latest code..."
+    - cd C:/Projects/FelArgailo
+    - git pull https://github.com/Selengiks/FelArgailo HEAD
+    - docker compose stop fel_argailo
+    - docker compose rm -f fel_argailo
+    - docker compose build --no-cache
+    - docker image prune -f
+    - docker buildx prune -f
+    - docker compose up -d fel_argailo
 
-  when: always
   only:
     - master

@@ -1,12 +1,9 @@
 FROM python:3.11
 
-WORKDIR /FelArgailo
+WORKDIR /keitaro-clicks-viewer
 
-COPY . /FelArgailo
+COPY . /keitaro-clicks-viewer
 
-RUN --mount=type=cache,target=/root/.cache/pip \
-    --mount=type=bind,source=requirements.txt,target=requirements.txt \
-    python -m pip install -r requirements.txt
+RUN python -m pip install -r requirements.txt
 
-ENTRYPOINT ["python3"]
-CMD ["run.py"]
+CMD ["python3", "run.py"]
