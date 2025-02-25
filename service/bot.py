@@ -19,6 +19,7 @@ class Bot(TelegramClient):
         self.pixiv_access_token = os.getenv("PIXIV_ACCESS_TOKEN")
         self.pixiv_refresh_token = os.getenv("PIXIV_REFRESH_TOKEN")
         self.cobalt_url = os.getenv("COBALT_API_URL")
+        self.cobalt_api_key = os.getenv("COBALT_API_KEY")
 
     def start_bot(self):
         self.start(password=lambda password: os.getenv("TWO_FACTOR_AUTH"))
