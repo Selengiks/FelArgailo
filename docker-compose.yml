@@ -10,7 +10,7 @@ services:
     networks:
       - cobalt_network
     environment:
-      - COBALT_API_URL=http://cobalt_instance:5000
+      - COBALT_API_URL=http://cobalt_instance:9000
 
 networks:
   cobalt_network:
