@@ -1,10 +1,13 @@
 import time
 import os
 import re
+import aiohttp
 from yt_dlp import YoutubeDL
 from telethon import events
 from service.bot import bot
 from loguru import logger
+
+COBALT_API_URL = os.getenv("COBALT_API_URL", "http://cobalt_instance:5000")
 
 
 # Форматування розміру файлу
@@ -187,6 +190,13 @@ async def youtube_handler(event, external=False, sender_type=None):
             )
 
 
+async def cobalt_handler(event, external=False, sender_type=None):
+    async with aiohttp.ClientSession() as session:
+        async with session.get(f"{COBALT_API_URL}/ping") as response:
+            data = await response.text()
+            await event.reply(f"Відповідь від Cobalt API: {data}")
+
+
 # Запуск модуля
 def start_module():
     logger.info("YouTube module started")
@@ -194,3 +204,11 @@ def start_module():
     @bot.on(events.NewMessage(from_users=bot.allowed_users, chats=bot.service_chat_id))
     async def handle_youtube_handler(event):
         await youtube_handler(event, sender_type="superadmin")
+
+    @bot.on(
+        events.NewMessage(
+            from_users=bot.allowed_users, chats=bot.service_chat_id, pattern="!ttest"
+        )
+    )
+    async def handle_youtube_handler(event):
+        await cobalt_handler(event, sender_type="superadmin")
