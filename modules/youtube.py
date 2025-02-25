@@ -59,7 +59,7 @@ async def download_youtube_media(video_url, quality):
     }
     payload = {
         "url": video_url,
-        "videoQuality": quality,
+        "videoQuality": str(quality),
         "audioFormat": "best" if quality == "audio" else "mp3",
         "filenameStyle": "classic",
         "downloadMode": "audio" if quality == "audio" else "auto",
