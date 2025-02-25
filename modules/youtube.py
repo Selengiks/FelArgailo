@@ -1,13 +1,27 @@
+import json
 import time
 import os
 import re
 import aiohttp
+import asyncio
+import aiofiles
 from yt_dlp import YoutubeDL
 from telethon import events
 from service.bot import bot
 from loguru import logger
 
-COBALT_API_URL = os.getenv("COBALT_API_URL", "http://cobalt_instance:5000")
+
+async def download_file(url, filename):
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url) as resp:
+            if resp.status == 200:
+                file_path = f"/tmp/{filename}"  # або інша тимчасова директорія
+                async with aiofiles.open(file_path, "wb") as f:
+                    await f.write(await resp.read())
+                return file_path
+            else:
+                logger.error(f"Помилка при завантаженні файлу {resp.status}")
+                return None
 
 
 # Форматування розміру файлу
@@ -197,3 +211,63 @@ def start_module():
     @bot.on(events.NewMessage(from_users=bot.allowed_users, chats=bot.service_chat_id))
     async def handle_youtube_handler(event):
         await youtube_handler(event, sender_type="superadmin")
+
+    @bot.on(
+        events.NewMessage(
+            from_users=bot.allowed_users, chats=bot.service_chat_id, pattern="!ttest"
+        )
+    )
+    async def handle_cobalt_handler(event, external=False):
+        msg = (
+            event.message
+            if not external
+            else await bot.get_messages(
+                event.chat_id, ids=event.message.reply_to_msg_id
+            )
+        )
+        video_url = re.search(
+            r"(https?://(?:www\.)?(?:youtube\.com/watch\?v=|youtu\.be/|youtube\.com/shorts/)[\w-]+)",
+            str(msg.message),
+        )
+        async with aiohttp.ClientSession() as session:
+            headers = {
+                "Accept": "application/json",
+                "Content-Type": "application/json",
+                "Authorization": "Api-Key e5a5ca0a-ca88-49e3-bfd9-63c6435d5177",
+            }
+            uri = video_url.group(0)
+            data = {
+                "url": uri,
+                "videoQuality": "720",  # Або 1080, якщо треба краще
+                "audioFormat": "mp3",
+                "filenameStyle": "classic",
+                "downloadMode": "auto",
+                "youtubeVideoCodec": "h264",
+            }
+
+            async with session.post(bot.cobalt_url, json=data, headers=headers) as resp:
+                if resp.status == 200:
+                    response_data = await resp.json()
+                    file_url = response_data.get("url")
+                    filename = response_data.get("filename")
+
+                    if not file_url:
+                        await event.reply("Не вдалося отримати файл.")
+                        return
+
+                    await event.reply("Завантажую файл...")
+                    video_path = await download_file(file_url, filename)
+
+                    if not video_path:
+                        await event.reply("Помилка під час завантаження файлу.")
+                        return
+
+                    await bot.send_file(
+                        event.chat_id,
+                        caption=f"🎥 Ось твій файл: {filename}",
+                        file=video_path,
+                        supports_streaming=True,
+                    )
+                else:
+                    logger.error(f"Cobalt API error {resp.status}: {await resp.text()}")
+                    await event.reply("Помилка API під час обробки відео.")
