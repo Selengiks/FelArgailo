@@ -89,7 +89,9 @@ def start_module():
                 elif "-r" in args:
                     is_raw_input = True
                     caption = input_str.replace("-r ", "")
-                elif "-g" in args and reply_msg.grouped_id:
+                elif (
+                    "-g" in args and reply_msg.grouped_id
+                ):  # TODO: додати сумісність -g прапору з іншими
                     is_album = True
                     msg_list = await bot.get_messages(
                         reply_msg.chat_id,
