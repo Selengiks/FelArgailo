@@ -95,8 +95,7 @@ def start_module():
 
                 media_files = download_images(img_urls)
 
-                tags = parse_tags(message_text)
-                caption = f"[Pixiv]({pixiv_url})\n\n" + "\n".join(tags)
+                caption = f"[Pixiv]({pixiv_url})\n\n#art"
 
                 try:
                     await bot.send_message(
