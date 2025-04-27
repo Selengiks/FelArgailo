@@ -29,4 +29,11 @@ async def run_bot():
 
 
 if __name__ == "__main__":
-    asyncio.run(run_bot())
+    loop = asyncio.get_event_loop()
+    try:
+        asyncio.run(run_bot())
+    except KeyboardInterrupt as SIGINT:
+        logger.info("Caught keyboard interrupt. Canceling tasks...")
+
+    finally:
+        loop.close()

@@ -3,9 +3,16 @@
 import os
 from telethon import TelegramClient
 from dotenv import load_dotenv
+import sentry_sdk
 
 load_dotenv()
 
+sentry_sdk.init(
+    dsn=os.getenv("SENTRY_DSN"),
+    # Add data like request headers and IP for users,
+    # see https://docs.sentry.io/platforms/python/data-management/data-collected/ for more info
+    send_default_pii=True,
+)
 
 class Bot(TelegramClient):
     def __init__(self):
