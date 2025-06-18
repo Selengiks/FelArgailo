@@ -1,11 +1,12 @@
 import time
 
+from telethon.helpers import TotalList
+
 from service.bot import bot
 from loguru import logger
 
 from telethon import events
-from telethon.tl.types import Channel, User
-from telethon.tl.types import ChannelParticipantsAdmins
+from telethon.tl.types import Channel, User, ChannelParticipantsAdmins, PeerUser, PeerChannel
 
 try:
     from modules.youtube import youtube_handler
@@ -22,15 +23,24 @@ def start_module():
     command = "!ssteal"
 
     async def get_username(message):
-        username = (
-            message.sender.title
-            if isinstance(message.sender, Channel)
-            else (
-                f"@{message.sender.username}"
-                if isinstance(message.sender, User)
-                else message.sender.id
-            )
-        )
+        if message.fwd_from:
+            if isinstance(message.fwd_from.from_id, PeerUser):
+                user_entity = await bot.get_entity(message.fwd_from.from_id.user_id)
+                username = f"@{user_entity.username}" if user_entity.username else user_entity.first_name if user_entity.first_name else user_entity.id
+            elif isinstance(message.fwd_from.from_id, PeerChannel):
+                channel_entity = await bot.get_entity(message.fwd_from.from_id.channel_id)
+                username = f"@{channel_entity.username}" if channel_entity.username else channel_entity.title if channel_entity.title else channel_entity.id
+            else:
+                username = None
+        else:
+            if isinstance(message.sender, Channel):
+                username = f"@{message.sender.username}" if message.sender.username else message.sender.title if message.sender.title else message.sender.id
+            elif isinstance(message.sender, User):
+                username = f"@{message.sender.username}" if message.sender.username else message.sender.first_name if message.sender.first_name else message.sender.id
+            else:
+                username = None
+                logger.error(f"Unknown sender type: {type(message.sender)}")
+
         return username
 
     async def get_sender_role(event):
@@ -62,15 +72,15 @@ def start_module():
         # Якщо є відповідь на повідомлення
         if event.is_reply:
             input_str = event.message.message.replace(f"{command} ", "")
-            reply_msg = await bot.get_messages(
-                event.chat_id, ids=event.message.reply_to_msg_id
-            )
+            reply_msg = await bot.get_messages(event.chat_id, ids=event.reply_to_msg_id)
             args = input_str.split()
             tags = [arg for arg in args if arg.startswith("#")]
 
             username = await get_username(reply_msg)
-            caption = f"Вкрадено у {username}"
-
+            if username:
+                caption = f"Вкрадено у {username}"
+            else:
+                caption = ""
             is_raw_input = False
             is_album = False
             target_msg = None
@@ -109,7 +119,7 @@ def start_module():
 
                 # Додаємо теги або #meme, якщо теги відсутні
                 if not is_raw_input:
-                    caption += "\n\n" + "\n".join(tags) if tags else "\n\n#meme"
+                    caption += "\n\n" + "\n".join(tags) if tags else ("#meme" if not caption else "\n\n#meme")
 
             # Для адмінів — також дозволити команду з -d
             elif sender_role == "admin":
