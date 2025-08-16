@@ -7,6 +7,7 @@ from loguru import logger
 
 from telethon import events
 from telethon.tl.types import Channel, User, ChannelParticipantsAdmins, PeerUser, PeerChannel
+from telethon.errors.rpcerrorlist import ChannelPrivateError
 
 try:
     from modules.youtube import youtube_handler
@@ -22,14 +23,21 @@ def start_module():
 
     command = "!ssteal"
 
-    async def get_username(message):
+    async def get_username(message, original_poster):
+        if not original_poster:
+            return f"@{message.sender.username}" if message.sender.username else message.sender.first_name if message.sender.first_name else message.sender.id
+
         if message.fwd_from:
             if isinstance(message.fwd_from.from_id, PeerUser):
                 user_entity = await bot.get_entity(message.fwd_from.from_id.user_id)
                 username = f"@{user_entity.username}" if user_entity.username else user_entity.first_name if user_entity.first_name else user_entity.id
             elif isinstance(message.fwd_from.from_id, PeerChannel):
-                channel_entity = await bot.get_entity(message.fwd_from.from_id.channel_id)
-                username = f"@{channel_entity.username}" if channel_entity.username else channel_entity.title if channel_entity.title else channel_entity.id
+                try:
+                    channel_entity = await bot.get_entity(message.fwd_from.from_id.channel_id)
+                    username = f"@{channel_entity.username}" if channel_entity.username else channel_entity.title if channel_entity.title else channel_entity.id
+                except ChannelPrivateError:
+                    username = f"@{message.sender.username}" if message.sender.username else message.sender.first_name if message.sender.first_name else message.sender.id
+
             else:
                 username = None
         else:
@@ -75,8 +83,9 @@ def start_module():
             reply_msg = await bot.get_messages(event.chat_id, ids=event.reply_to_msg_id)
             args = input_str.split()
             tags = [arg for arg in args if arg.startswith("#")]
+            original_poster = True if "-s" not in args else False
 
-            username = await get_username(reply_msg)
+            username = await get_username(reply_msg, original_poster)
             if username:
                 caption = f"Вкрадено у {username}"
             else:
