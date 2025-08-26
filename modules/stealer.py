@@ -148,7 +148,7 @@ def start_module():
                     await bot.send_message(
                         bot.channel, file=target_msg, message=caption
                     )
-                time.sleep(5)
+                time.sleep(3)
                 await bot.delete_messages(event.chat_id, message_ids=event.message.id)
             except TypeError as e:
                 logger.error(f"Type error: {e}")
