@@ -1,7 +1,7 @@
 # main_bot.py
 
 from service.bot import bot
-from service.logger import start_logger
+from service.logger import setup_logger
 from service.plugins_manager import PluginManager
 from service.scheduler import start_scheduler
 from telethon.errors import FloodWaitError
@@ -12,7 +12,7 @@ from loguru import logger
 async def run_bot():
     while True:
         try:
-            start_logger("DEBUG")
+            setup_logger()
             PluginManager.load_modules()
             start_scheduler()
 

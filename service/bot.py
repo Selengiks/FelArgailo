@@ -17,9 +17,7 @@ class Bot(TelegramClient):
         super().__init__("telethon", int(config("API_ID")), config("API_HASH"))
         self.channel = config("CHANNEL")
         self.service_chat_id = int(config("SERVICE_CHAT_ID"))
-        self.test_channel = config("TEST_CHANNEL")
-        self.test_chat_id = int(config("TEST_CHAT_ID"))
-        self.allowed_users = [290522978, 472092975, 570477907, 582601743]
+        self.allowed_users = list(map(int, config("ALLOWED_USERS").split(",")))
         self.temp_dir = ".\\temp"
         self.pixiv_access_token = config("PIXIV_ACCESS_TOKEN")
         self.pixiv_refresh_token = config("PIXIV_REFRESH_TOKEN")
@@ -27,7 +25,7 @@ class Bot(TelegramClient):
         self.cobalt_api_key = config("COBALT_API_KEY")
 
     def start_bot(self):
-        self.start(password=lambda password: config("TWO_FACTOR_AUTH"))
+        self.start(password=config("TWO_FACTOR_AUTH"))
 
 
 bot = Bot()

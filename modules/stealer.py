@@ -1,7 +1,5 @@
 import time
 
-from telethon.helpers import TotalList
-
 from service.bot import bot
 from loguru import logger
 
@@ -23,7 +21,7 @@ def start_module():
 
     command = "!ssteal"
 
-    async def get_username(message, original_poster):
+    async def get_username(message, original_poster: bool = False):
         if not original_poster:
             return f"@{message.sender.username}" if message.sender.username else message.sender.first_name if message.sender.first_name else message.sender.id
 
