@@ -56,20 +56,22 @@ async def download_youtube_media(video_url, quality):
     youtube_temp_dir = os.path.join(bot.temp_dir, "youtube")
     os.makedirs(youtube_temp_dir, exist_ok=True)
 
-    # Спочатку отримаємо інформацію про медіа
-    info_cmd = [
-        bot.yt_dlp_path,
-        "--no-playlist",
-        "--print",
-        "%(id)s",
-        "--cookies",
-        "cookies.txt",
-        "--no-download",
-        video_url,
-    ]
+    # Зберігаємо початкову бажану якість
+    requested_quality = quality
 
     try:
-        # Отримуємо ID медіа
+        # Отримуємо ID медіа (залишаємо як є)
+        info_cmd = [
+            bot.yt_dlp_path,
+            "--no-playlist",
+            "--print",
+            "%(id)s",
+            "--cookies",
+            "cookies.txt",
+            "--no-download",
+            video_url,
+        ]
+
         process = await asyncio.create_subprocess_exec(
             *info_cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
         )
@@ -81,10 +83,33 @@ async def download_youtube_media(video_url, quality):
                 "message": f"Помилка отримання ID медіа: {stderr.decode()}",
                 "video_path": None,
             }
-        else:
-            logger.info(f"Отримано ID медіа: {stdout.decode()}")
 
         video_id = stdout.decode().strip()
+        logger.info(f"Отримано ID медіа: {video_id}")
+
+        # Отримуємо список доступних форматів
+        format_cmd = [
+            bot.yt_dlp_path,
+            "--no-playlist",
+            "--cookies",
+            "cookies.txt",
+            "--list-formats",
+            video_url,
+        ]
+
+        process = await asyncio.create_subprocess_exec(
+            *format_cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
+        )
+        stdout, stderr = await process.communicate()
+
+        if process.returncode != 0:
+            logger.error(f"Помилка отримання форматів: {stderr.decode()}")
+            return {
+                "message": f"Помилка отримання форматів: {stderr.decode()}",
+                "video_path": None,
+            }
+
+        formats_output = stdout.decode()
 
         # Базові параметри для завантаження
         base_cmd = [
@@ -98,20 +123,15 @@ async def download_youtube_media(video_url, quality):
             "cookies.txt",
         ]
 
-        # Формуємо шаблон назви файлу
-        output_template = os.path.join(
-            youtube_temp_dir, f"{quality}_%(title).200s-%(id)s.%(ext)s"
-        )
-        base_cmd.extend(["-o", output_template])
+        actual_quality = quality  # Змінна для актуальної якості
 
-        # Вибір формату залежно від якості
+        # Логіка вибору формату
         if quality == "mp3":
             base_cmd.extend(
                 ["-f", "bestaudio", "-x", "--embed-thumbnail", "--audio-format", "mp3"]
             )
         elif quality == "audio":
             base_cmd.extend(["-f", "bestaudio", "-x", "--embed-thumbnail"])
-
         elif quality == "best":
             base_cmd.extend(
                 [
@@ -119,25 +139,65 @@ async def download_youtube_media(video_url, quality):
                     "bestvideo[ext=mp4][vcodec^=avc]+bestaudio[ext=m4a]/bestvideo[ext=mp4]+bestaudio[ext=m4a]/bestvideo+bestaudio/best[ext=mp4]/best",
                 ]
             )
-
         else:
-            base_cmd.extend(
-                [
-                    "-f",
-                    f"bestvideo[height={quality}][ext=mp4][vcodec^=avc]+bestaudio[ext=m4a]/bestvideo[height={quality}]+bestaudio",
-                ]
-            )
+            # Шукаємо доступні відео формати
+            available_heights = []
+            for line in formats_output.split("\n"):
+                if "mp4" in line and "video only" in line:
+                    try:
+                        height = int(line.split("x")[1].split()[0])
+                        available_heights.append(height)
+                    except (IndexError, ValueError):
+                        continue
 
-        # Додаємо URL в кінець
+            if available_heights:
+                # Знаходимо найближчу доступну якість
+                target_height = quality
+                available_heights.sort()
+                if target_height in available_heights:
+                    actual_quality = target_height
+                else:
+                    # Якщо бажана якість недоступна, беремо найближчу меншу
+                    available_heights.sort(reverse=True)
+                    actual_quality = available_heights[0]
+                    for height in available_heights:
+                        if height <= target_height:
+                            actual_quality = height
+                            break
+
+                logger.info(
+                    f"Вибрано якість {actual_quality}p (бажана була {quality}p)"
+                )
+
+                base_cmd.extend(
+                    [
+                        "-f",
+                        f"bestvideo[height={actual_quality}][ext=mp4][vcodec^=avc]+bestaudio[ext=m4a]/bestvideo[height={actual_quality}]+bestaudio",
+                    ]
+                )
+            else:
+                logger.warning(
+                    "Не знайдено відповідних форматів, використовуємо найкращу доступну якість"
+                )
+                base_cmd.extend(["-f", "best[ext=mp4]/best"])
+                actual_quality = "best"
+
+        # Оновлюємо шаблон назви файлу з актуальною якістю
+        output_template = os.path.join(
+            youtube_temp_dir, f"{actual_quality}_%(title).200s-%(id)s.%(ext)s"
+        )
+        base_cmd.extend(["-o", output_template])
+
+        # Додаємо URL
         base_cmd.append(video_url)
 
-        # Запускаємо процес завантаження
+        # Продовжуємо з завантаженням як раніше...
         process = await asyncio.create_subprocess_exec(
             *base_cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
         )
-
-        # Чекаємо завершення процесу
         stdout, stderr = await process.communicate()
+
+        # Решта коду залишається без змін...
 
         if process.returncode != 0:
             logger.error(f"Помилка yt-dlp: {stderr.decode()}")
@@ -148,7 +208,7 @@ async def download_youtube_media(video_url, quality):
 
         # Шукаємо завантажений файл по ID медіа
         for file in os.listdir(youtube_temp_dir):
-            if video_id in file and file.startswith(f"{quality}_"):
+            if video_id in file and file.startswith(f"{actual_quality}_"):
                 file_path = os.path.join(youtube_temp_dir, file)
                 logger.info(f"Знайдено завантажений файл: {file}")
                 return {
