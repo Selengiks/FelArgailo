@@ -9,15 +9,18 @@ RUN apt-get update && apt-get install --no-install-recommends -y \
     nano \
     curl \
     ffmpeg \
-    && sudo add-apt-repository ppa:tomtomtom/yt-dlp \
-    && sudo apt update \
-    && sudo apt install yt-dlp
+    python3-pip \
+    software-properties-common \
+    gnupg \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
 
+# Встановлюємо yt-dlp через pip (рекомендований спосіб)
+RUN pip install --no-cache-dir yt-dlp
 
+WORKDIR /FelArgailo
 
-WORKDIR /keitaro-clicks-viewer
-
-COPY . /keitaro-clicks-viewer
+COPY . /FelArgailo
 
 RUN pip install -r requirements.txt
 
