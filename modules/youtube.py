@@ -1,12 +1,11 @@
 import time
 import os
 import re
-import aiohttp
 import asyncio
-import aiofiles
 from telethon import events
 from service.bot import bot
 from loguru import logger
+from service.help_manager import HelpManager
 
 
 # Форматування розміру файлу
@@ -19,7 +18,16 @@ def format_size(size):
 
 # Отримання якості відео з повідомлення
 def get_media_quality(message_text):
-    quality_map = {"-lq": 480, "-mq": 720, "-hq": 1080, "-bq": "max", "-ea": "audio"}
+    quality_map = {
+        "-lq": 480,
+        "-mq": 720,
+        "-hq": 1080,
+        "2k": 1440,
+        "4k": 2160,
+        "-bq": "best",
+        "-ba": "audio",
+        "-ea": "mp3",
+    }
     for key, value in quality_map.items():
         if key in message_text:
             return value
@@ -38,64 +46,118 @@ async def callback(current, total, message):
 
     # Оновлюємо повідомлення кожні 5 секунд
     if current_time - callback.last_update_time > callback.update_interval:
-        current_mb, total_mb = current / (1024**2), total / (1024**2)
-        callback_msg = (
-            f"{percentage:.2f}% Uploaded: {current_mb:.2f} MB out of {total_mb:.2f} MB"
-        )
+        callback_msg = f"{percentage:.2f}% Завантажено: {format_size(current)} / {format_size(total)}"
         logger.trace(callback_msg)
         await bot.edit_message(message, callback_msg)
         callback.last_update_time = current_time
 
 
-# Завантаження відео з YouTube
 async def download_youtube_media(video_url, quality):
     youtube_temp_dir = os.path.join(bot.temp_dir, "youtube")
     os.makedirs(youtube_temp_dir, exist_ok=True)
 
-    headers = {
-        "Accept": "application/json",
-        "Content-Type": "application/json",
-        "Authorization": f"Api-Key {bot.cobalt_api_key}",
-    }
-    payload = {
-        "url": video_url,
-        "videoQuality": str(quality),
-        "audioFormat": "best" if quality == "audio" else "mp3",
-        "filenameStyle": "classic",
-        "downloadMode": "audio" if quality == "audio" else "auto",
-        "youtubeVideoCodec": "h264",
-    }
+    # Спочатку отримаємо інформацію про медіа
+    info_cmd = [
+        bot.yt_dlp_path,
+        "--no-playlist",
+        "--print",
+        "%(id)s",
+        "--no-download",
+        video_url,
+    ]
 
     try:
-        async with aiohttp.ClientSession() as session:
-            async with session.post(bot.cobalt_url, json=payload, headers=headers) as resp:
-                if resp.status != 200:
-                    logger.error(f"Cobalt API error {resp.status}: {await resp.text()}")
-                    return None
+        # Отримуємо ID медіа
+        process = await asyncio.create_subprocess_exec(
+            *info_cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
+        )
+        stdout, stderr = await process.communicate()
 
-                response_data = await resp.json()
-                file_url = response_data.get("url")
-                filename = response_data.get("filename")
+        if process.returncode != 0:
+            logger.error(f"Помилка отримання ID медіа: {stderr.decode()}")
+            return {
+                "message": f"Помилка отримання ID медіа: {stderr.decode()}",
+                "video_path": None,
+            }
+        else:
+            logger.info(f"Отримано ID медіа: {stdout.decode()}")
 
-                if not file_url or not filename:
-                    logger.error("Не вдалося отримати URL або ім'я файлу.")
-                    return None
+        video_id = stdout.decode().strip()
 
-            video_path = os.path.join(youtube_temp_dir, filename)
+        # Базові параметри для завантаження
+        base_cmd = [
+            bot.yt_dlp_path,
+            "--newline",
+            "--ignore-config",
+            "--no-playlist",
+            "--output-na-placeholder",
+            "NA",
+        ]
 
-            async with session.get(file_url) as file_resp:
-                if file_resp.status != 200:
-                    logger.error(f"Помилка при завантаженні файлу {file_resp.status}")
-                    return None
+        # Формуємо шаблон назви файлу
+        output_template = os.path.join(
+            youtube_temp_dir, f"{quality}_%(title).200s-%(id)s.%(ext)s"
+        )
+        base_cmd.extend(["-o", output_template])
 
-                async with aiofiles.open(video_path, "wb") as f:
-                    await f.write(await file_resp.read())
+        # Вибір формату залежно від якості
+        if quality == "mp3":
+            base_cmd.extend(
+                ["-f", "bestaudio", "-x", "--embed-thumbnail", "--audio-format", "mp3"]
+            )
+        elif quality == "audio":
+            base_cmd.extend(["-f", "bestaudio", "-x", "--embed-thumbnail"])
 
-            return video_path
+        elif quality == "best":
+            base_cmd.extend(
+                [
+                    "-f",
+                    "bestvideo[ext=mp4][vcodec^=avc]+bestaudio[ext=m4a]/bestvideo[ext=mp4]+bestaudio[ext=m4a]/bestvideo+bestaudio/best[ext=mp4]/best",
+                ]
+            )
+
+        else:
+            base_cmd.extend(
+                [
+                    "-f",
+                    f"bestvideo[height={quality}][ext=mp4][vcodec^=avc]+bestaudio[ext=m4a]/bestvideo[height={quality}]+bestaudio",
+                ]
+            )
+
+        # Додаємо URL в кінець
+        base_cmd.append(video_url)
+
+        # Запускаємо процес завантаження
+        process = await asyncio.create_subprocess_exec(
+            *base_cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
+        )
+
+        # Чекаємо завершення процесу
+        stdout, stderr = await process.communicate()
+
+        if process.returncode != 0:
+            logger.error(f"Помилка yt-dlp: {stderr.decode()}")
+            return {"message": f"Помилка yt-dlp: {stderr.decode()}", "video_path": None}
+
+        else:
+            logger.success(f"Завантажено файл: {stdout.decode().strip()}")
+
+        # Шукаємо завантажений файл по ID медіа
+        for file in os.listdir(youtube_temp_dir):
+            if video_id in file and file.startswith(f"{quality}_"):
+                file_path = os.path.join(youtube_temp_dir, file)
+                logger.info(f"Знайдено завантажений файл: {file}")
+                return {
+                    "message": f"Знайдено завантажений файл: {file}",
+                    "video_path": file_path,
+                }
+
+        logger.error(f"Файл з ID {video_id} не знайдено")
+        return {"message": f"Файл з ID {video_id} не знайдено", "video_path": None}
 
     except Exception as e:
-        logger.error(f"Error downloading media from YouTube: {e}")
-        return None
+        logger.error(f"Помилка завантаження медіа: {e}")
+        return {"message": f"Помилка завантаження медіа: {e}", "video_path": None}
 
 
 # Парсинг тегів з повідомлення
@@ -117,7 +179,10 @@ async def youtube_handler(event, external=False, sender_type=None):
 
     post = (
         True
-        if "-p" in msg.message.join(event.message.message.split(" "))
+        if (
+            "-p" in msg.message.join(event.message.message.split(" "))
+            or "-p" in event.message.message.split(" ")
+        )
         and sender_type == "superadmin"
         else False
     )
@@ -128,15 +193,17 @@ async def youtube_handler(event, external=False, sender_type=None):
     )
     if youtube_url_match:
         youtube_url = youtube_url_match.group(1)
-        message = await event.reply("🗿 Опа, ютубчик, ща вкрадемо...")
+        if external:
+            message = await msg.reply("🗿 Опа, ютубчик, ща вкрадемо...")
+        else:
+            message = await event.reply("🗿 Опа, ютубчик, ща вкрадемо...")
 
         try:
             quality = get_media_quality(event.message.message)
-            video_path = await download_youtube_media(youtube_url, quality)
+            result = await download_youtube_media(youtube_url, quality)
 
-            if not video_path:
-                logger.warning("No media found")
-                await event.reply("Щось я нічого не знайшов, тож іди гуляй")
+            if not result["video_path"]:
+                await event.reply(result["message"])
                 return
 
             await bot.edit_message(message, "Скачав медіа, ща завантажимо 👀")
@@ -145,7 +212,7 @@ async def youtube_handler(event, external=False, sender_type=None):
                 is_audio=True if quality == "audio" else False,
             )
 
-            total_size = os.path.getsize(video_path)
+            total_size = os.path.getsize(result["video_path"])
             caption = f"[Соурс]({youtube_url})"
 
             if post:
@@ -153,7 +220,7 @@ async def youtube_handler(event, external=False, sender_type=None):
                 await bot.send_file(
                     bot.channel,
                     caption=caption,
-                    file=video_path,
+                    file=result["video_path"],
                     progress_callback=lambda c, t: callback(c, t, message),
                     supports_streaming=not quality == "audio",
                 )
@@ -166,23 +233,23 @@ async def youtube_handler(event, external=False, sender_type=None):
                     event.chat_id,
                     caption=caption
                     + f"\n\nВо👍. Завантажено медіа розміром {format_size(total_size)}",
-                    file=video_path,
+                    file=result["video_path"],
                     progress_callback=lambda c, t: callback(c, t, message),
                     supports_streaming=not quality == "audio",
                 )
 
-                await bot.delete_messages(
-                    msg.chat,
-                    message_ids=(
-                        [message.id, msg.id]
-                        if not external
-                        else (
-                            [message.id, event.message.id]
-                            if msg.sender_id != event.sender_id
-                            else [message.id, event.message.id, msg.id]
-                        )
-                    ),
-                )
+            await bot.delete_messages(
+                msg.chat,
+                message_ids=(
+                    [message.id, msg.id]
+                    if not external
+                    else (
+                        [message.id, event.message.id]
+                        if msg.sender_id != event.sender_id
+                        else [message.id, event.message.id, msg.id]
+                    )
+                ),
+            )
 
         except Exception as e:
             logger.error(f"Error processing YouTube media: {e}")
@@ -192,8 +259,21 @@ async def youtube_handler(event, external=False, sender_type=None):
 
 
 # Запуск модуля
+def get_help_text():
+    return (
+        "**YouTube** - __Опціональні прапори для -d:__\n"
+        "    `-p` - __постить дане відео на канал [ЛИШЕ ДЛЯ АДМІНІВ КАНАЛУ]__\n"
+        "    `-lq` - __Low quality, буде завантажувати відео з порогом якості в 480p__\n"
+        "    `-mq` - __Medium quality (за замовчуванням), буде завантажувати відео з порогом якості в 720p__\n"
+        "    `-hq` - __High quality, буде завантажувати відео з порогом якості в 1080p__\n"
+        "    `-bq` - __Best quality, буде завантажувати відео з максимально доступною якістю__\n"
+        "    `-ea` - __Extract audio, прапор дозволяє завантажити та витягнути аудіо__"
+    )
+
+
 def start_module():
-    logger.info("YouTube module started")
+    logger.info("Youtube module started")
+    HelpManager.register_help("youtube", get_help_text())
 
     @bot.on(events.NewMessage(from_users=bot.allowed_users, chats=bot.service_chat_id))
     async def handle_youtube_handler(event):

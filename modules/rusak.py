@@ -6,7 +6,7 @@ from loguru import logger
 
 
 async def send_command_and_check_response(conv, command, success_msgs):
-    await conv.send_message(command)
+    await conv.send_message(command)  # TODO: mark_read(command) test
     answer = await conv.get_response()
 
     return any(success_text in answer.text for success_text in success_msgs), answer

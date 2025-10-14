@@ -1,11 +1,16 @@
 import time
-
 from service.bot import bot
 from loguru import logger
-
 from telethon import events
-from telethon.tl.types import Channel, User, ChannelParticipantsAdmins, PeerUser, PeerChannel
+from telethon.tl.types import (
+    Channel,
+    User,
+    ChannelParticipantsAdmins,
+    PeerUser,
+    PeerChannel,
+)
 from telethon.errors.rpcerrorlist import ChannelPrivateError
+from service.help_manager import HelpManager
 
 try:
     from modules.youtube import youtube_handler
@@ -16,33 +21,149 @@ except ImportError:
     logger.warning("Youtube module is not installed")
 
 
+class MediaFlag:
+    def __init__(self, flag: str, tag: str = None, superadmin_only: bool = False):
+        self.flag = flag
+        self.tag = tag
+        self.superadmin_only = superadmin_only
+
+
+class MediaFlags:
+    FLAGS = {
+        "raw": MediaFlag("-r"),  # Сирий текст без модифікацій
+        "source": MediaFlag("-s"),  # Показувати оригінального автора
+        "quote": MediaFlag("-q"),  # Цитування тексту
+        "gallery": MediaFlag("-g"),  # Альбом/галерея
+        "art": MediaFlag("-a", "#art"),  # Арт
+        "cunny": MediaFlag("-c", "#cunny"),  # Канні
+        "download": MediaFlag("-d"),  # Завантаження медіа
+    }
+
+    def __init__(self, args: list):
+        self.flags = []
+        self.tags = []
+
+        for arg in args:
+            for flag in self.FLAGS.values():
+                if arg == flag.flag:
+                    self.flags.append(flag)
+                    if flag.tag:
+                        self.tags.append(flag.tag)
+            if arg.startswith("#"):
+                self.tags.append(arg)
+
+    def has_flag(self, flag_name: str) -> bool:
+        return any(f.flag == self.FLAGS[flag_name].flag for f in self.flags)
+
+    def get_tags(self) -> str:
+        return "\n\n" + "\n".join(self.tags) if self.tags else ""
+
+    def is_raw(self) -> bool:
+        return self.has_flag("raw")
+
+    def show_source(self) -> bool:
+        return not self.has_flag("source")
+
+    def is_gallery(self) -> bool:
+        return self.has_flag("gallery")
+
+    def is_quote(self) -> bool:
+        return self.has_flag("quote")
+
+    def is_download(self) -> bool:
+        return self.has_flag("download")
+
+
+def get_help_text():
+    return (
+        "**Stealer** - __щоб вкрасти мем, чи арт, введи команду `!ssteal` у відповідь "
+        "на медіа, яке хочеш вкрасти. За замовчуванням, ставиться тег #meme. Для керування, наявні прапори:__\n"
+        "    `-q` - __краде медіа із оригінальним підписом, і кидає як цитату.__\n"
+        '    `-r` "текст"- __краде медіа з текстом, який слідує після команди.__ \n'
+        "    `-g` - __дозволяє вкрасти множину медіа (якщо користувач скинув групу медіа).__\n"
+        "    `-s` - __приховує джерело медіа.__\n"
+        "    `-a` - __додає тег #art.__\n"
+        "    `-c` - __додає тег #cunny.__\n"
+        "    `-d` - __дозволяє завантажити медіа з Ютубу.__\n"
+    )
+
+
 def start_module():
     logger.info("Stealer module started")
-
+    HelpManager.register_help("stealer", get_help_text())
     command = "!ssteal"
 
     async def get_username(message, original_poster: bool = False):
         if not original_poster:
-            return f"@{message.sender.username}" if message.sender.username else message.sender.first_name if message.sender.first_name else message.sender.id
+            return (
+                f"@{message.sender.username}"
+                if message.sender.username
+                else (
+                    message.sender.first_name
+                    if message.sender.first_name
+                    else message.sender.id
+                )
+            )
 
         if message.fwd_from:
             if isinstance(message.fwd_from.from_id, PeerUser):
                 user_entity = await bot.get_entity(message.fwd_from.from_id.user_id)
-                username = f"@{user_entity.username}" if user_entity.username else user_entity.first_name if user_entity.first_name else user_entity.id
+                username = (
+                    f"@{user_entity.username}"
+                    if user_entity.username
+                    else (
+                        user_entity.first_name
+                        if user_entity.first_name
+                        else user_entity.id
+                    )
+                )
             elif isinstance(message.fwd_from.from_id, PeerChannel):
                 try:
-                    channel_entity = await bot.get_entity(message.fwd_from.from_id.channel_id)
-                    username = f"@{channel_entity.username}" if channel_entity.username else channel_entity.title if channel_entity.title else channel_entity.id
+                    channel_entity = await bot.get_entity(
+                        message.fwd_from.from_id.channel_id
+                    )
+                    username = (
+                        f"@{channel_entity.username}"
+                        if channel_entity.username
+                        else (
+                            channel_entity.title
+                            if channel_entity.title
+                            else channel_entity.id
+                        )
+                    )
                 except ChannelPrivateError:
-                    username = f"@{message.sender.username}" if message.sender.username else message.sender.first_name if message.sender.first_name else message.sender.id
-
+                    username = (
+                        f"@{message.sender.username}"
+                        if message.sender.username
+                        else (
+                            message.sender.first_name
+                            if message.sender.first_name
+                            else message.sender.id
+                        )
+                    )
             else:
                 username = None
         else:
             if isinstance(message.sender, Channel):
-                username = f"@{message.sender.username}" if message.sender.username else message.sender.title if message.sender.title else message.sender.id
+                username = (
+                    f"@{message.sender.username}"
+                    if message.sender.username
+                    else (
+                        message.sender.title
+                        if message.sender.title
+                        else message.sender.id
+                    )
+                )
             elif isinstance(message.sender, User):
-                username = f"@{message.sender.username}" if message.sender.username else message.sender.first_name if message.sender.first_name else message.sender.id
+                username = (
+                    f"@{message.sender.username}"
+                    if message.sender.username
+                    else (
+                        message.sender.first_name
+                        if message.sender.first_name
+                        else message.sender.id
+                    )
+                )
             else:
                 username = None
                 logger.error(f"Unknown sender type: {type(message.sender)}")
@@ -67,89 +188,85 @@ def start_module():
         else:
             return "user"
 
+    async def process_media_message(event, reply_msg, flags: MediaFlags, sender_role):
+        if sender_role == "user":
+            return None
+
+        # Для адмінів дозволяємо тільки завантаження
+        if sender_role == "admin":
+            if youtube_module and flags.is_download():
+                await youtube_handler(event, external=True, sender_type=sender_role)
+            else:
+                await event.reply("⛔️ Доступна лише команда з прапором -d")
+            return None
+
+        # YouTube обробка для суперадмінів
+        if youtube_module and flags.is_download():
+            await youtube_handler(event, external=True, sender_type=sender_role)
+            return None
+
+        input_str = event.message.message.replace(f"{command} ", "")
+        username = await get_username(reply_msg, flags.show_source())
+        caption = f"Вкрадено у {username}" if username else ""
+        target_msg = None
+        is_album = False
+
+        # Обробка прапорів
+        if flags.is_quote() and reply_msg.text:
+            caption = f'Цитовано {username}:\n"{reply_msg.text}"'
+        elif flags.is_raw():
+            caption = input_str
+            for flag in MediaFlags.FLAGS.values():
+                caption = caption.replace(flag.flag, "").strip()
+        elif flags.is_gallery() and reply_msg.grouped_id:
+            is_album = True
+            limit = 11
+            msg_list = await bot.get_messages(
+                reply_msg.chat_id,
+                limit=25,
+                min_id=int(reply_msg.id) - limit,
+                max_id=int(reply_msg.id) + limit,
+                reverse=True,
+            )
+            target_msg = [
+                msg for msg in msg_list if msg.grouped_id == reply_msg.grouped_id
+            ]
+
+        if not is_album:
+            target_msg = reply_msg
+
+        # Додавання тегів
+        if not flags.is_raw():
+            if caption:
+                caption += flags.get_tags() or "\n\n#meme"
+            else:
+                caption += flags.get_tags()
+
+        return target_msg, caption, is_album
+
     @bot.on(events.NewMessage(pattern=command))
     async def stealer(event):
-        sender_role = await get_sender_role(event)
-
-        if sender_role == "user":
-            # Якщо юзер — просто ігноруємо
+        if not event.is_reply:
             return
 
-        # Якщо є відповідь на повідомлення
-        if event.is_reply:
-            input_str = event.message.message.replace(f"{command} ", "")
-            reply_msg = await bot.get_messages(event.chat_id, ids=event.reply_to_msg_id)
-            args = input_str.split()
-            tags = [arg for arg in args if arg.startswith("#")]
-            original_poster = True if "-s" not in args else False
+        sender_role = await get_sender_role(event)
+        args = event.message.message.replace(f"{command} ", "").split()
+        flags = MediaFlags(args)
+        reply_msg = await bot.get_messages(event.chat_id, ids=event.reply_to_msg_id)
 
-            username = await get_username(reply_msg, original_poster)
-            if username:
-                caption = f"Вкрадено у {username}"
-            else:
-                caption = ""
-            is_raw_input = False
-            is_album = False
-            target_msg = None
+        result = await process_media_message(event, reply_msg, flags, sender_role)
+        if not result:
+            return
 
-            # Для суперадмінів — весь функціонал
-            if sender_role == "superadmin":
-                # Суперадмін може все, що й адмін
-                if youtube_module:
-                    if "-d" in args:
-                        await youtube_handler(
-                            event, external=True, sender_type=sender_role
-                        )
-                        return
-                if "-q" in args and reply_msg.text:
-                    caption = f'Цитовано {username}:\n"{reply_msg.text}"'
-                elif "-r" in args:
-                    is_raw_input = True
-                    caption = input_str.replace("-r ", "")
-                elif (
-                    "-g" in args and reply_msg.grouped_id
-                ):  # TODO: додати сумісність -g прапору з іншими
-                    is_album = True
-                    msg_list = await bot.get_messages(
-                        reply_msg.chat_id,
-                        limit=11,
-                        min_id=int(reply_msg.id) - 11,
-                        max_id=int(reply_msg.id) + 11,
-                    )
-                    target_msg = [
-                        msg
-                        for msg in msg_list[::-1]
-                        if msg.grouped_id == reply_msg.grouped_id
-                    ]
-                if not is_album:
-                    target_msg = reply_msg
+        target_msg, caption, is_album = result
 
-                # Додаємо теги або #meme, якщо теги відсутні
-                if not is_raw_input:
-                    caption += "\n\n" + "\n".join(tags) if tags else ("#meme" if not caption else "\n\n#meme")
-
-            # Для адмінів — також дозволити команду з -d
-            elif sender_role == "admin":
-                if youtube_module:
-                    if "-d" in args:
-                        await youtube_handler(
-                            event, external=True, sender_type=sender_role
-                        )
-                        return
-                    else:
-                        await event.reply("⛔️ Доступна лише команда з прапором -d")
-                        return
-
-            # Відправка повідомлення в канал
-            try:
-                if target_msg:
-                    await bot.send_message(
-                        bot.channel, file=target_msg, message=caption
-                    )
-                time.sleep(3)
-                await bot.delete_messages(event.chat_id, message_ids=event.message.id)
-            except TypeError as e:
-                logger.error(f"Type error: {e}")
-                await event.reply(
-                    f"__Ти що намагаєшся вкрасти, текст? Ну я хз короче, лови помилку:__\n`{e}`",
-                )
+        try:
+            if target_msg:
+                await bot.send_message(bot.channel, file=target_msg, message=caption)
+            time.sleep(3)
+            await bot.delete_messages(event.chat_id, message_ids=event.message.id)
+        except TypeError as e:
+            logger.error(f"Type error: {e}")
+            await event.reply(
+                f"__Ти що намагаєшся вкрасти, текст? Ну я хз короче, лови помилку:__\n`{e}`"
+            )

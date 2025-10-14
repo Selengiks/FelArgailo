@@ -25,6 +25,11 @@ class PluginManager:
             for file_name in os.listdir(disabled_modules_dir)
         )
 
+        # Clear all help sections before loading
+        from service.help_manager import HelpManager
+
+        HelpManager._help_sections.clear()
+
         for module_name in module_files:
             module_path = f"{modules_dir}.{module_name[:-3]}"
             try:

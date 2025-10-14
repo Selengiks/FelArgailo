@@ -12,6 +12,7 @@ sentry_sdk.init(
     send_default_pii=True,
 )
 
+
 class Bot(TelegramClient):
     def __init__(self):
         super().__init__("telethon", int(config("API_ID")), config("API_HASH"))
@@ -21,8 +22,7 @@ class Bot(TelegramClient):
         self.temp_dir = ".\\temp"
         self.pixiv_access_token = config("PIXIV_ACCESS_TOKEN")
         self.pixiv_refresh_token = config("PIXIV_REFRESH_TOKEN")
-        self.cobalt_url = config("COBALT_API_URL")
-        self.cobalt_api_key = config("COBALT_API_KEY")
+        self.yt_dlp_path = config("YT_DLP_PATH")
 
     def start_bot(self):
         self.start(password=config("TWO_FACTOR_AUTH"))
