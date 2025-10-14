@@ -1,9 +1,9 @@
 services:
-  FelArgailo:
+  fel_argailo:
     build:
       context: .
       dockerfile: Dockerfile
     restart: unless-stopped
     volumes:
         - .:/FelArgailo
-    container_name: FelArgailo_container
+    container_name: fel_argailo_container

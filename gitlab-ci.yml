@@ -9,12 +9,12 @@ deploy:
     - echo "Pulling latest code..."
     - cd C:/Projects/FelArgailo
     - git pull https://github.com/Selengiks/FelArgailo HEAD
-    - docker compose stop FelArgailo
-    - docker compose rm -f FelArgailo
+    - docker compose stop fel_argailo
+    - docker compose rm -f fel_argailo
     - docker compose build --no-cache
     - docker image prune -f
     - docker buildx prune -f
-    - docker compose up -d FelArgailo
+    - docker compose up -d fel_argailo
 
   only:
     - master
