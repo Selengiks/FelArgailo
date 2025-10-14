@@ -237,3 +237,4 @@ media/
 *test*
 temp/
 .netrc
+cookies.txt

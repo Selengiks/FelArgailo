@@ -62,6 +62,8 @@ async def download_youtube_media(video_url, quality):
         "--no-playlist",
         "--print",
         "%(id)s",
+        "--cookies",
+        "cookies.txt",
         "--no-download",
         video_url,
     ]
@@ -92,6 +94,8 @@ async def download_youtube_media(video_url, quality):
             "--no-playlist",
             "--output-na-placeholder",
             "NA",
+            "--cookies",
+            "cookies.txt",
         ]
 
         # Формуємо шаблон назви файлу
