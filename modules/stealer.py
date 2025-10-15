@@ -2,15 +2,9 @@ import time
 from service.bot import bot
 from loguru import logger
 from telethon import events
-from telethon.tl.types import (
-    Channel,
-    User,
-    ChannelParticipantsAdmins,
-    PeerUser,
-    PeerChannel,
-)
-from telethon.errors.rpcerrorlist import ChannelPrivateError
+from telethon.tl.types import ChannelParticipantsAdmins
 from service.help_manager import HelpManager
+from utils.utils import get_username
 
 try:
     from modules.youtube import youtube_handler
@@ -93,83 +87,6 @@ def start_module():
     HelpManager.register_help("stealer", get_help_text())
     command = "!ssteal"
 
-    async def get_username(message, original_poster: bool = False):
-        if not original_poster:
-            return (
-                f"@{message.sender.username}"
-                if message.sender.username
-                else (
-                    message.sender.first_name
-                    if message.sender.first_name
-                    else message.sender.id
-                )
-            )
-
-        if message.fwd_from:
-            if isinstance(message.fwd_from.from_id, PeerUser):
-                user_entity = await bot.get_entity(message.fwd_from.from_id.user_id)
-                username = (
-                    f"@{user_entity.username}"
-                    if user_entity.username
-                    else (
-                        user_entity.first_name
-                        if user_entity.first_name
-                        else user_entity.id
-                    )
-                )
-            elif isinstance(message.fwd_from.from_id, PeerChannel):
-                try:
-                    channel_entity = await bot.get_entity(
-                        message.fwd_from.from_id.channel_id
-                    )
-                    username = (
-                        f"@{channel_entity.username}"
-                        if channel_entity.username
-                        else (
-                            channel_entity.title
-                            if channel_entity.title
-                            else channel_entity.id
-                        )
-                    )
-                except ChannelPrivateError:
-                    username = (
-                        f"@{message.sender.username}"
-                        if message.sender.username
-                        else (
-                            message.sender.first_name
-                            if message.sender.first_name
-                            else message.sender.id
-                        )
-                    )
-            else:
-                username = None
-        else:
-            if isinstance(message.sender, Channel):
-                username = (
-                    f"@{message.sender.username}"
-                    if message.sender.username
-                    else (
-                        message.sender.title
-                        if message.sender.title
-                        else message.sender.id
-                    )
-                )
-            elif isinstance(message.sender, User):
-                username = (
-                    f"@{message.sender.username}"
-                    if message.sender.username
-                    else (
-                        message.sender.first_name
-                        if message.sender.first_name
-                        else message.sender.id
-                    )
-                )
-            else:
-                username = None
-                logger.error(f"Unknown sender type: {type(message.sender)}")
-
-        return username
-
     async def get_sender_role(event):
         superadmins = bot.allowed_users
         admins = [
@@ -195,14 +112,18 @@ def start_module():
         # Для адмінів дозволяємо тільки завантаження
         if sender_role == "admin":
             if youtube_module and flags.is_download():
-                await youtube_handler(event, external=True, sender_type=sender_role)
+                await youtube_handler(
+                    event, external=True, sender_type=sender_role, mode="command"
+                )
             else:
                 await event.reply("⛔️ Доступна лише команда з прапором -d")
             return None
 
         # YouTube обробка для суперадмінів
         if youtube_module and flags.is_download():
-            await youtube_handler(event, external=True, sender_type=sender_role)
+            await youtube_handler(
+                event, external=True, sender_type=sender_role, mode="command"
+            )
             return None
 
         input_str = event.message.message.replace(f"{command} ", "")

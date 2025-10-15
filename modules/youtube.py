@@ -5,6 +5,7 @@ import asyncio
 from telethon import events
 from service.bot import bot
 from loguru import logger
+from utils.utils import get_username
 from service.help_manager import HelpManager
 
 
@@ -234,7 +235,7 @@ def parse_tags(message_text, is_audio=False):
 
 
 # Основний обробник YouTube-повідомлень
-async def youtube_handler(event, external=False, sender_type=None):
+async def youtube_handler(event, external=False, sender_type=None, mode="command"):
     msg = (
         event.message
         if not external
@@ -246,6 +247,7 @@ async def youtube_handler(event, external=False, sender_type=None):
         if (
             "-p" in msg.message.join(event.message.message.split(" "))
             or "-p" in event.message.message.split(" ")
+            or mode == "service_chat"
         )
         and sender_type == "superadmin"
         else False
@@ -277,9 +279,10 @@ async def youtube_handler(event, external=False, sender_type=None):
             )
 
             total_size = os.path.getsize(result["video_path"])
-            caption = f"[Соурс]({youtube_url})"
 
             if post:
+                username = await get_username(event)
+                caption = f"[Соурс]({youtube_url}) вкрадено у {username}"
                 caption += "\n\n" + "\n".join(tags)
                 await bot.send_file(
                     bot.channel,
@@ -293,6 +296,7 @@ async def youtube_handler(event, external=False, sender_type=None):
                     f"Во👍. Медіа успішно вкрадено на канал\n\nЗавантажено файл розміром {format_size(total_size)}",
                 )
             else:
+                caption = f"[Соурс]({youtube_url})"
                 await bot.send_file(
                     event.chat_id,
                     caption=caption
@@ -341,4 +345,4 @@ def start_module():
 
     @bot.on(events.NewMessage(from_users=bot.allowed_users, chats=bot.service_chat_id))
     async def handle_youtube_handler(event):
-        await youtube_handler(event, sender_type="superadmin")
+        await youtube_handler(event, sender_type="superadmin", mode="service_chat")
