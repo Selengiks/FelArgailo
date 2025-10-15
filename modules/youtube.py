@@ -279,11 +279,13 @@ async def youtube_handler(event, external=False, sender_type=None, mode="command
             )
 
             total_size = os.path.getsize(result["video_path"])
+            caption = f"[Соурс]({youtube_url})"
+            if mode == "command":
+                username = await get_username(event)
+                caption += f" вкрадено у {username}"
 
             if post:
-                username = await get_username(event)
-                caption = f"[Соурс]({youtube_url}) вкрадено у {username}"
-                caption += "\n\n" + "\n".join(tags)
+                caption += f"\n\n" + "\n".join(tags)
                 await bot.send_file(
                     bot.channel,
                     caption=caption,
@@ -296,7 +298,6 @@ async def youtube_handler(event, external=False, sender_type=None, mode="command
                     f"Во👍. Медіа успішно вкрадено на канал\n\nЗавантажено файл розміром {format_size(total_size)}",
                 )
             else:
-                caption = f"[Соурс]({youtube_url})"
                 await bot.send_file(
                     event.chat_id,
                     caption=caption
