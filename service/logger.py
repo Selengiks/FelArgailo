@@ -9,7 +9,7 @@ LOGGER_MODE = "INFO"  # TRACE, DEBUG, INFO, WARNING, ERROR, CRITICAL
 LOGGING_LEVELS = {
     "TRACE": logging.DEBUG,  # У logging нема TRACE, тому кидаємо на DEBUG
     "DEBUG": logging.DEBUG,
-    "INFO": logging.INFO,
+    "INFO": logging.WARNING,  # фільтр спаму від телетону
     "WARNING": logging.WARNING,
     "ERROR": logging.ERROR,
     "CRITICAL": logging.CRITICAL,
