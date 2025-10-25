@@ -119,8 +119,8 @@ async def download_youtube_media(video_url, quality, max_retries=3, retry_delay=
                     # "--no-playlist",
                     # "--output-na-placeholder",
                     # "NA",
-                    # "--cookies",
-                    # "cookies.txt",
+                    "--cookies",
+                    "cookies.txt",
                 ]
 
                 actual_quality = quality  # Змінна для актуальної якості
