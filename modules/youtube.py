@@ -65,8 +65,8 @@ async def download_youtube_media(video_url, quality, max_retries=3, retry_delay=
                 "--no-playlist",
                 "--print",
                 "%(id)s",
-                # "--cookies",
-                # "cookies.txt",
+                "--cookies",
+                "cookies.txt",
                 "--no-download",
                 video_url,
             ]
