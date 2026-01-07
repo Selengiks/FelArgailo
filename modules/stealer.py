@@ -10,7 +10,7 @@ youtube_module = (
     True if "youtube" in PluginManager.get_successful_modules().keys() else False
 )
 if youtube_module:
-    from modules.youtube import youtube_handler
+    from modules.disabled.youtube import youtube_handler
 
 
 class MediaFlag:
