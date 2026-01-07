@@ -2,9 +2,9 @@ import time
 from service.bot import bot
 from loguru import logger
 from telethon import events
-from telethon.tl.types import ChannelParticipantsAdmins
+from telethon.events import NewMessage
 from service.help_manager import HelpManager
-from utils.utils import get_username
+from utils.utils import get_sender_role, get_username
 
 try:
     from modules.youtube import youtube_handler
@@ -29,6 +29,7 @@ class MediaFlags:
         "quote": MediaFlag("-q"),  # Цитування тексту
         "gallery": MediaFlag("-g"),  # Альбом/галерея
         "art": MediaFlag("-a", "#art"),  # Арт
+        "memart": MediaFlag("-ma", "#memart"),  # Мемарт
         "cunny": MediaFlag("-c", "#cunny"),  # Канні
         "download": MediaFlag("-d"),  # Завантаження медіа
     }
@@ -87,25 +88,8 @@ def start_module():
     HelpManager.register_help("stealer", get_help_text())
     command = "!ssteal"
 
-    async def get_sender_role(event):
-        superadmins = bot.allowed_users
-        admins = [
-            user.id
-            async for user in bot.iter_participants(
-                event.chat_id, filter=ChannelParticipantsAdmins
-            )
-        ]
-
-        sender_id = event.message.sender_id
-
-        if sender_id in superadmins:
-            return "superadmin"
-        elif sender_id in admins:
-            return "admin"
-        else:
-            return "user"
-
-    async def process_media_message(event, reply_msg, flags: MediaFlags, sender_role):
+    async def process_media_message(event, reply_msg, flags: MediaFlags):
+        sender_role = await get_sender_role(event.chat_id, event.sender_id)
         if sender_role == "user":
             return None
 
@@ -166,16 +150,15 @@ def start_module():
         return target_msg, caption, is_album
 
     @bot.on(events.NewMessage(pattern=command))
-    async def stealer(event):
+    async def stealer(event: NewMessage.Event):
         if not event.is_reply:
             return
 
-        sender_role = await get_sender_role(event)
         args = event.message.message.replace(f"{command} ", "").split()
         flags = MediaFlags(args)
         reply_msg = await bot.get_messages(event.chat_id, ids=event.reply_to_msg_id)
 
-        result = await process_media_message(event, reply_msg, flags, sender_role)
+        result = await process_media_message(event, reply_msg, flags)
         if not result:
             return
 
@@ -184,7 +167,7 @@ def start_module():
         try:
             if target_msg:
                 await bot.send_message(bot.channel, file=target_msg, message=caption)
-            time.sleep(3)
+            time.sleep(4)
             await bot.delete_messages(event.chat_id, message_ids=event.message.id)
         except TypeError as e:
             logger.error(f"Type error: {e}")
