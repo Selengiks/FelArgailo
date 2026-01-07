@@ -56,6 +56,8 @@ async def callback(current, total, message):
 async def download_youtube_media(video_url, quality, max_retries=3, retry_delay=5):
     youtube_temp_dir = os.path.join(bot.temp_dir, "youtube")
     os.makedirs(youtube_temp_dir, exist_ok=True)
+    with open("cookies.txt", "w") as f:
+        print(f)
 
     for attempt in range(max_retries):
         try:
