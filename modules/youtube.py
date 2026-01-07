@@ -362,7 +362,6 @@ def get_help_text():
 
 def start_module():
     logger.info("Youtube module started")
-    HelpManager.register_help("youtube", get_help_text())
 
     @bot.on(events.NewMessage(from_users=bot.allowed_users, chats=bot.service_chat_id))
     async def handle_youtube_handler(event):

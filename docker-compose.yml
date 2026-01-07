@@ -1,5 +1,11 @@
 services:
   fel_argailo:
+    deploy:
+      resources:
+        limits:
+          memory: 2048M
+        reservations:
+          memory: 1024M
     build:
       context: .
       dockerfile: Dockerfile

@@ -1,20 +1,22 @@
-FROM python:3.10-slim
+FROM python:3.11.7-slim
 
 ENV TZ=Europe/Kyiv
 
-# Встановлюємо необхідні пакети
 RUN apt-get update && apt-get install --no-install-recommends -y \
     cron \
-    htop \
-    nano \
     curl \
+    unzip \
     ffmpeg \
     python3-pip \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# Встановлюємо yt-dlp через pip (рекомендований спосіб)
 RUN pip install --no-cache-dir yt-dlp
+
+RUN curl -fsSL https://deno.land/install.sh | sh
+# Set environment variables to add Deno to the PATH
+ENV DENO_INSTALL="/root/.deno"
+ENV PATH="$DENO_INSTALL/bin:$PATH"
 
 WORKDIR /FelArgailo
 

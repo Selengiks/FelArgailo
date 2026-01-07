@@ -16,7 +16,6 @@ def get_help_text():
 
 def start_module():
     logger.info("Welcome module started")
-    HelpManager.register_help("welcome", get_help_text())
 
     @bot.on(events.NewMessage(pattern="!sstatus"))
     async def send_welcome(event):
@@ -32,7 +31,7 @@ def start_module():
             "**Кібер-Фелікс**:\n"
             "__Модуль ШІ для автоматизації шітпостингу активовано.__\n\n"
             "**Підключені модулі:**\n"
-            f"`{', '.join(successful_modules) if num_successful_modules else 'Немає підключених модулів'}`\n\n"
+            f"`{', '.join(successful_modules.keys()) if num_successful_modules else 'Немає підключених модулів'}`\n\n"
             "**Вимкнені модулі:**\n"
             f"`{', '.join(disabled_modules) if num_disabled_modules else 'Немає вимкнених модулів'}`\n\n"
             "**Проблемні модулі:**\n"

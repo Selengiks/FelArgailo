@@ -3,6 +3,7 @@
 from service.bot import bot
 from service.logger import setup_logger
 from service.plugins_manager import PluginManager
+from service.help_manager import HelpManager
 from service.scheduler import start_scheduler
 from telethon.errors import FloodWaitError
 import asyncio
@@ -14,6 +15,11 @@ async def run_bot():
         try:
             setup_logger()
             PluginManager.load_modules()
+            [
+                HelpManager.register_help(n, m.get_help_text())
+                for n, m in PluginManager.get_successful_modules().items()
+                if callable(getattr(m, "get_help_text", None))
+            ]
             start_scheduler()
 
             async with bot:

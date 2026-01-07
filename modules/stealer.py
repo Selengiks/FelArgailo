@@ -3,16 +3,14 @@ from service.bot import bot
 from loguru import logger
 from telethon import events
 from telethon.events import NewMessage
-from service.help_manager import HelpManager
+from service.plugins_manager import PluginManager
 from utils.utils import get_sender_role, get_username
 
-try:
+youtube_module = (
+    True if "youtube" in PluginManager.get_successful_modules().keys() else False
+)
+if youtube_module:
     from modules.youtube import youtube_handler
-
-    youtube_module = True
-except ImportError:
-    youtube_module = False
-    logger.warning("Youtube module is not installed")
 
 
 class MediaFlag:
@@ -31,8 +29,10 @@ class MediaFlags:
         "art": MediaFlag("-a", "#art"),  # Арт
         "memart": MediaFlag("-ma", "#memart"),  # Мемарт
         "cunny": MediaFlag("-c", "#cunny"),  # Канні
-        "download": MediaFlag("-d"),  # Завантаження медіа
     }
+
+    if youtube_module:
+        FLAGS["download"] = MediaFlag("-d")  # Завантаження медіа
 
     def __init__(self, args: list):
         self.flags = []
@@ -65,12 +65,14 @@ class MediaFlags:
     def is_quote(self) -> bool:
         return self.has_flag("quote")
 
-    def is_download(self) -> bool:
-        return self.has_flag("download")
+    if youtube_module:
+
+        def is_download(self) -> bool:
+            return self.has_flag("download")
 
 
 def get_help_text():
-    return (
+    help_str = (
         "**Stealer** - __щоб вкрасти мем, чи арт, введи команду `!ssteal` у відповідь "
         "на медіа, яке хочеш вкрасти. За замовчуванням, ставиться тег #meme. Для керування, наявні прапори:__\n"
         "    `-q` - __краде медіа із оригінальним підписом, і кидає як цитату.__\n"
@@ -79,14 +81,17 @@ def get_help_text():
         "    `-s` - __приховує джерело медіа.__\n"
         "    `-a` - __додає тег #art.__\n"
         "    `-c` - __додає тег #cunny.__\n"
-        "    `-d` - __дозволяє завантажити медіа з Ютубу.__\n"
     )
+
+    if youtube_module:
+        help_str += "    `-d` - __дозволяє завантажити медіа з Ютубу.__\n"
+
+    return help_str
 
 
 def start_module():
     logger.info("Stealer module started")
-    HelpManager.register_help("stealer", get_help_text())
-    command = "!ssteal"
+    commands = ["!ssteal", "!ss"]
 
     async def process_media_message(event, reply_msg, flags: MediaFlags):
         sender_role = await get_sender_role(event.chat_id, event.sender_id)
@@ -110,7 +115,8 @@ def start_module():
             )
             return None
 
-        input_str = event.message.message.replace(f"{command} ", "")
+        used_command = next(cmd for cmd in commands if event.raw_text.startswith(cmd))
+        input_str = event.message.message.replace(f"{used_command} ", "")
         username = await get_username(reply_msg, flags.show_source())
         caption = f"Вкрадено у {username}" if username else ""
         target_msg = None
@@ -149,12 +155,16 @@ def start_module():
 
         return target_msg, caption, is_album
 
-    @bot.on(events.NewMessage(pattern=command))
+    async def filter_cmd(event):
+        return any(event.raw_text.startswith(cmd) for cmd in commands)
+
+    @bot.on(events.NewMessage(func=filter_cmd))
     async def stealer(event: NewMessage.Event):
         if not event.is_reply:
             return
 
-        args = event.message.message.replace(f"{command} ", "").split()
+        used_command = next(cmd for cmd in commands if event.raw_text.startswith(cmd))
+        args = event.message.message.replace(f"{used_command} ", "").split()
         flags = MediaFlags(args)
         reply_msg = await bot.get_messages(event.chat_id, ids=event.reply_to_msg_id)
 
